@@ -3,91 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Admin - Party Game</title>
+    <title>Dashboard Admin - PestaPora</title>
+    <!-- Font lucu menyamakan dengan index.html -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #fdf6e3;
-            --primary: #ffb3ba;
-            --secondary: #baffc9;
-            --accent: #bae1ff;
+            --primary: #FFB7B2;
+            --secondary: #B5EAD7;
+            --accent: #C7CEEA;
+            --danger: #FFDAC1;
             --text: #555;
-            --danger: #ffdfba;
             --sidebar-width: 250px;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(135deg, var(--bg-color), #ffecd2);
             color: var(--text);
             margin: 0;
             display: flex;
             height: 100vh;
+            box-sizing: border-box;
         }
+        
+        /* Custom Toast Notification */
+        #toast {
+            visibility: hidden; min-width: 250px; margin-left: -125px;
+            background-color: #333; color: #fff; text-align: center;
+            border-radius: 12px; padding: 16px; position: fixed;
+            z-index: 2000; left: 50%; bottom: 30px; font-size: 16px;
+            font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        #toast.error { background-color: #ff4757; }
+        #toast.success { background-color: #2ed573; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
         /* Login Screen */
         #loginScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-color); display: flex;
-            justify-content: center; align-items: center; z-index: 1000;
+            background: linear-gradient(135deg, var(--bg-color), #ffecd2);
+            display: flex; justify-content: center; align-items: center; z-index: 1000;
         }
         .login-box {
-            background: white; padding: 30px; border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;
+            background: white; padding: 40px; border-radius: 24px;
+            box-shadow: 0 10px 20px rgba(255, 183, 178, 0.3); text-align: center;
+            border: 4px solid var(--primary); width: 90%; max-width: 320px;
         }
+        
         /* Dashboard Layout */
-        #dashboardScreen {
-            display: none; width: 100%;
-        }
+        #dashboardScreen { display: none; width: 100%; }
         .sidebar {
             width: var(--sidebar-width); background: white; padding: 20px 0;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05); z-index: 10;
+            border-right: 4px solid var(--accent);
         }
-        .sidebar h2 { text-align: center; color: #ff8b94; margin-bottom: 30px; }
+        .sidebar h2 { text-align: center; color: #ff8b94; margin-bottom: 30px; font-size: 28px; }
         .nav-item {
-            padding: 15px 20px; cursor: pointer; border-left: 5px solid transparent;
-            transition: 0.2s; font-weight: bold;
+            padding: 15px 20px; cursor: pointer; border-left: 6px solid transparent;
+            transition: 0.2s; font-weight: 600; font-size: 18px; color: var(--text);
         }
-        .nav-item:hover { background: #f9f9f9; }
-        .nav-item.active { background: #f0f0f0; border-left-color: var(--primary); color: #ff8b94; }
-        .content {
-            flex-grow: 1; padding: 30px; overflow-y: auto;
+        .nav-item:hover { background: #fdf6e3; }
+        .nav-item.active { border-left-color: var(--primary); color: #ff8b94; background: #ffe5e7; }
+        
+        .content { flex-grow: 1; padding: 40px; overflow-y: auto; }
+        .panel { 
+            display: none; background: white; padding: 30px; border-radius: 24px; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05); border: 4px solid var(--secondary); 
+            max-width: 800px; margin: 0 auto; 
         }
-        .panel { display: none; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .panel.active { display: block; }
+        .panel.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         /* Form Elements */
-        input, textarea, button {
-            width: 100%; padding: 12px; margin: 10px 0;
-            border-radius: 8px; border: 1px solid #ddd; font-size: 16px;
-            box-sizing: border-box;
+        input, textarea {
+            width: 100%; padding: 15px; margin: 10px 0;
+            border-radius: 12px; border: 2px solid #ddd; font-size: 16px;
+            box-sizing: border-box; font-family: 'Fredoka', sans-serif;
+            outline: none; transition: 0.2s;
         }
+        input:focus, textarea:focus { border-color: var(--secondary); }
+        
         button {
-            background-color: var(--primary); color: white; border: none;
-            cursor: pointer; font-weight: bold;
+            width: 100%; padding: 15px; margin: 15px 0 5px; border-radius: 15px; 
+            border: none; background-color: var(--primary); color: white; cursor: pointer; 
+            font-weight: 600; font-size: 18px; font-family: 'Fredoka', sans-serif; 
+            box-shadow: 0 6px 0px rgba(230, 150, 145, 0.8); transition: transform 0.1s, box-shadow 0.1s;
         }
-        button:hover { filter: brightness(0.9); }
-        .form-group { margin-bottom: 15px; }
-        label { font-weight: bold; font-size: 14px; }
+        button:active { transform: translateY(6px); box-shadow: 0 0px 0px rgba(230, 150, 145, 0.8); }
+        
+        .form-group { margin-bottom: 20px; text-align: left; }
+        label { font-weight: 700; font-size: 16px; color: #ff8b94; }
+        h3 { margin-top: 0; color: #555; font-size: 24px; border-bottom: 2px dashed #eee; padding-bottom: 15px; }
     </style>
 </head>
 <body>
 
+    <!-- Notifikasi Toast -->
+    <div id="toast">Notifikasi muncul di sini</div>
+
     <!-- Layar Login -->
     <div id="loginScreen">
         <div class="login-box">
-            <h2 style="color: #ff8b94;">Admin Login 🔒</h2>
-            <input type="password" id="adminPassword" placeholder="Masukkan Password">
-            <button onclick="login()">Masuk</button>
-            <p id="loginError" style="color: red; display: none;">Password salah!</p>
+            <h2 style="color: #ff8b94; font-size: 32px; margin-bottom: 5px;">Admin 🔒</h2>
+            <p style="color: #888; margin-top: 0;">Masukkan kata sandi rahasia</p>
+            <input type="password" id="adminPassword" placeholder="Kata Sandi" onkeypress="if(event.key === 'Enter') login()">
+            <button onclick="login()">Masuk Dapur</button>
         </div>
     </div>
 
     <!-- Layar Dashboard -->
     <div id="dashboardScreen">
         <div class="sidebar">
-            <h2>Party Admin</h2>
-            <div class="nav-item active" onclick="switchTab('topSurvei')">Top Survei</div>
-            <div class="nav-item" onclick="switchTab('satuHati')">Satu Hati</div>
-            <div class="nav-item" onclick="switchTab('sambungLirik')">Sambung Lirik</div>
-            <div class="nav-item" onclick="switchTab('estafetBom')">Estafet Bom</div>
+            <h2>Dapur Soal</h2>
+            <div class="nav-item active" onclick="switchTab('topSurvei', this)">📊 Top Survei</div>
+            <div class="nav-item" onclick="switchTab('satuHati', this)">💞 Satu Hati</div>
+            <div class="nav-item" onclick="switchTab('sambungLirik', this)">🎤 Sambung Lirik</div>
+            <div class="nav-item" onclick="switchTab('estafetBom', this)">💣 Estafet Bom</div>
         </div>
 
         <div class="content">
@@ -99,40 +132,40 @@
                     <input type="text" id="tsPertanyaan" placeholder="Contoh: Alasan orang telat ngantor">
                 </div>
                 <div class="form-group">
-                    <label>Jawaban (Pisahkan dengan koma, urutkan dari poin terbesar)</label>
+                    <label>Jawaban (Pisahkan dengan koma, urutkan dari yang paling sering dijawab)</label>
                     <textarea id="tsJawaban" rows="3" placeholder="Macet, Kesiangan, Ban Bocor, Hujan"></textarea>
                 </div>
-                <button onclick="simpanTopSurvei()">Simpan Soal</button>
+                <button onclick="simpanTopSurvei()">💾 Simpan Soal Survei</button>
             </div>
 
             <!-- Panel Satu Hati -->
             <div id="satuHati" class="panel">
                 <h3>Tambah Soal: Satu Hati</h3>
                 <div class="form-group">
-                    <label>Prompt / Kategori</label>
+                    <label>Kategori / Prompt</label>
                     <input type="text" id="shPrompt" placeholder="Contoh: Sebutkan satu merek mi instan kuah">
                 </div>
-                <button onclick="simpanSatuHati()">Simpan Soal</button>
+                <button onclick="simpanSatuHati()">💾 Simpan Soal Satu Hati</button>
             </div>
 
             <!-- Panel Sambung Lirik -->
             <div id="sambungLirik" class="panel">
                 <h3>Tambah Soal: Sambung Lirik</h3>
                 <div class="form-group">
-                    <label>Lirik Lagu Lengkap (Sistem akan sensor 1 kata otomatis)</label>
+                    <label>Lirik Lagu Lengkap (Sistem akan sensor 1 kata acak otomatis)</label>
                     <textarea id="slLirik" rows="3" placeholder="Contoh: Bisa saja bencana yang datang esok hari"></textarea>
                 </div>
-                <button onclick="simpanSambungLirik()">Simpan Soal</button>
+                <button onclick="simpanSambungLirik()">💾 Simpan Soal Lirik</button>
             </div>
 
             <!-- Panel Estafet Bom -->
             <div id="estafetBom" class="panel">
                 <h3>Tambah Soal: Estafet Bom</h3>
                 <div class="form-group">
-                    <label>Kategori Bom</label>
+                    <label>Kategori Bom (Kata tidak boleh diulang pemain)</label>
                     <input type="text" id="ebKategori" placeholder="Contoh: Hewan berawalan huruf K">
                 </div>
-                <button onclick="simpanEstafetBom()">Simpan Soal</button>
+                <button onclick="simpanEstafetBom()">💾 Simpan Soal Bom</button>
             </div>
         </div>
     </div>
@@ -154,7 +187,15 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Fungsi Login
+        // Fungsi Toast Notification (Ganti Alert Biasa)
+        window.showToast = (msg, type = 'success') => {
+            const toast = document.getElementById("toast");
+            toast.innerText = msg;
+            toast.className = `show ${type}`;
+            setTimeout(() => { toast.className = toast.className.replace(`show ${type}`, ""); }, 3000);
+        };
+
+        // Login
         window.login = async () => {
             const passInput = document.getElementById('adminPassword').value;
             try {
@@ -162,49 +203,48 @@
                 if (docSnap.exists() && docSnap.data().password === passInput) {
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('dashboardScreen').style.display = 'flex';
+                    showToast("Login Berhasil! 🎉", "success");
                 } else {
-                    document.getElementById('loginError').style.display = 'block';
+                    showToast("Password salah! Coba lagi.", "error");
                 }
             } catch (e) {
-                console.error("Error login:", e);
-                alert("Gagal koneksi ke database. Pastikan Rules Firestore sudah disetting.");
+                showToast("Gagal koneksi ke database!", "error");
             }
         };
 
-        // Fungsi Navigasi Tab
-        window.switchTab = (tabId) => {
+        // Navigasi Tab
+        window.switchTab = (tabId, element) => {
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
+            element.classList.add('active');
         };
 
-        // Fungsi Simpan ke Firebase (Subcollection 'soal')
+        // Core Save Function
         async function saveToDB(gameId, data) {
             try {
                 await addDoc(collection(db, `bank_soal/${gameId}/soal`), data);
-                alert("Soal berhasil disimpan!");
+                showToast("Berhasil! Soal sudah masuk ke database. ✅", "success");
                 document.querySelectorAll('input[type="text"], textarea').forEach(el => el.value = '');
             } catch (e) {
                 console.error("Error saving:", e);
-                alert("Gagal menyimpan soal!");
+                showToast("Waduh, gagal menyimpan soal! ❌", "error");
             }
         }
 
-        // Logic Top Survei (Sistem Koma & Poin Berjenjang)
+        // Logic Top Survei
         window.simpanTopSurvei = () => {
             const pert = document.getElementById('tsPertanyaan').value.trim();
             const rawJawaban = document.getElementById('tsJawaban').value;
-            if(!pert || !rawJawaban) return alert("Isi semua kolom!");
+            if(!pert || !rawJawaban) return showToast("Mohon isi pertanyaan dan jawabannya!", "error");
 
-            // Pecah koma dan bersihkan spasi
             const answers = rawJawaban.split(',').map(s => s.trim()).filter(s => s !== "");
-            const n = answers.length;
-            const sum = (n * (n + 1)) / 2; // Rumus deret hitung untuk bagi poin berjenjang
+            if(answers.length === 0) return showToast("Format jawaban salah!", "error");
 
+            const n = answers.length;
+            const sum = (n * (n + 1)) / 2;
             const jawabanData = answers.map((ans, index) => {
-                const poin = Math.round((100 / sum) * (n - index)); // Kata pertama poin terbesar
-                return { teks: ans.toLowerCase(), poin: poin }; // Disimpan lowercase biar gampang dicocokin nanti
+                return { teks: ans.toLowerCase(), poin: Math.round((100 / sum) * (n - index)) };
             });
 
             saveToDB('top_survei', { pertanyaan: pert, jawaban: jawabanData });
@@ -213,45 +253,38 @@
         // Logic Satu Hati
         window.simpanSatuHati = () => {
             const prompt = document.getElementById('shPrompt').value.trim();
-            if(!prompt) return alert("Isi kolom prompt!");
+            if(!prompt) return showToast("Kolom kategori tidak boleh kosong!", "error");
             saveToDB('satu_hati', { prompt: prompt });
         };
 
-        // Logic Sambung Lirik (Sistem Sensor Otomatis)
+        // Logic Sambung Lirik
         window.simpanSambungLirik = () => {
             const lirikLengkap = document.getElementById('slLirik').value.trim();
-            if(!lirikLengkap) return alert("Isi liriknya!");
+            if(!lirikLengkap) return showToast("Liriknya jangan dikosongin dong!", "error");
 
             const words = lirikLengkap.split(/\s+/);
             const stopWords = ['di', 'ke', 'dari', 'yang', 'dan', 'atau', 'untuk', 'dengan', 'pada', 'dalam'];
             let validIndices = [];
 
-            // Cari index kata yang valid (bukan stopwords dan bukan simbol doang)
             words.forEach((w, i) => {
                 const cleanW = w.toLowerCase().replace(/[^a-z0-9]/g, '');
                 if(cleanW.length > 2 && !stopWords.includes(cleanW)) validIndices.push(i);
             });
 
-            if(validIndices.length === 0) return alert("Lirik terlalu pendek atau tidak ada kata yang pas untuk ditebak.");
+            if(validIndices.length === 0) return showToast("Lirik terlalu pendek atau tidak ada kata yang pas.", "error");
 
-            // Pilih kata acak
             const pickIdx = validIndices[Math.floor(Math.random() * validIndices.length)];
-            const targetWordClean = words[pickIdx].replace(/[^a-zA-Z0-9]/g, ''); // Ambil huruf/angkanya aja
-            
-            // Ganti kata asli di array dengan garis bawah, tapi biarkan kalau ada koma/titik nempel
+            const targetWordClean = words[pickIdx].replace(/[^a-zA-Z0-9]/g, ''); 
             const kataSensor = words[pickIdx].replace(targetWordClean, '_________');
             const lirikTampil = words.map((w, i) => i === pickIdx ? kataSensor : w).join(' ');
 
-            saveToDB('sambung_lirik', { 
-                lirik_tampil: lirikTampil, 
-                jawaban_benar: targetWordClean.toLowerCase() 
-            });
+            saveToDB('sambung_lirik', { lirik_tampil: lirikTampil, jawaban_benar: targetWordClean.toLowerCase() });
         };
 
         // Logic Estafet Bom
         window.simpanEstafetBom = () => {
             const kategori = document.getElementById('ebKategori').value.trim();
-            if(!kategori) return alert("Isi kategori bom!");
+            if(!kategori) return showToast("Isi kategori bom dulu!", "error");
             saveToDB('estafet_bom', { kategori: kategori });
         };
     </script>
