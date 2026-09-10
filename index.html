@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Party Game Server</title>
+    <style>
+        :root {
+            --bg-color: #fdf6e3;
+            --primary: #ffb3ba;
+            --secondary: #baffc9;
+            --accent: #bae1ff;
+            --text: #555;
+            --danger: #ffdfba;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-align: center;
+            display: none; /* Hidden by default */
+        }
+        .active { display: block; }
+        h1, h2 { color: #ff8b94; }
+        input, button {
+            width: 90%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        button:hover { filter: brightness(0.9); }
+        .btn-secondary { background-color: var(--accent); color: var(--text); }
+        .btn-danger { background-color: var(--danger); color: var(--text); }
+        
+        /* Lobby Styles */
+        .player-list { text-align: left; margin: 15px 0; }
+        .player-item { 
+            display: flex; justify-content: space-between; 
+            padding: 10px; background: #f9f9f9; 
+            margin-bottom: 5px; border-radius: 5px; align-items: center;
+        }
+        .team-merah { border-left: 5px solid #ff8b94; }
+        .team-biru { border-left: 5px solid #bae1ff; }
+        .admin-lock { position: absolute; top: 10px; right: 20px; font-size: 24px; cursor: pointer; }
+        
+        /* Modal / Popup */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); justify-content: center; align-items: center;
+        }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; width: 80%; max-width: 300px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <!-- Tombol Rahasia Admin -->
+    <div class="admin-lock" onclick="window.open('admin.html', '_blank')">🔒</div>
+
+    <!-- Halaman 1: Landing (Buat / Gabung) -->
+    <div id="landingScreen" class="container active">
+        <h1>Party Game</h1>
+        <input type="text" id="playerName" placeholder="Nama Kamu" maxlength="10">
+        <button onclick="createRoom()">Buat Room</button>
+        <hr style="border-top: 1px dashed #ddd; margin: 20px 0;">
+        <input type="number" id="roomCodeInput" placeholder="Kode Room (4 Digit)">
+        <button class="btn-secondary" onclick="joinRoom()">Gabung Room</button>
+    </div>
+
+    <!-- Halaman 2: Ruang Tunggu (Lobby) -->
+    <div id="lobbyScreen" class="container">
+        <h2>Ruang Tunggu</h2>
+        <p>Kode Room: <strong id="displayRoomCode" style="font-size: 24px; color: #ff8b94;">-</strong></p>
+        
+        <div class="player-list" id="playerList">
+            <!-- Daftar pemain render disini -->
+        </div>
+
+        <!-- Kontrol khusus Host -->
+        <div id="hostControls" style="display: none;">
+            <button class="btn-secondary" onclick="randomizeTeams()">Acak Tim</button>
+            <button onclick="goToGameSelection()">Pilih Game</button>
+        </div>
+        <p id="waitingText" style="display: none;">Menunggu Host memulai...</p>
+    </div>
+
+    <!-- Halaman 3: Pemilihan Game -->
+    <div id="gameSelectionScreen" class="container">
+        <h2>Pilih Permainan</h2>
+        <button onclick="showTutorial('party')">🎉 Mode Party (Main Semua)</button>
+        <button class="btn-secondary" onclick="showTutorial('top_survei')">Top Survei</button>
+        <button class="btn-secondary" onclick="showTutorial('satu_hati')">Satu Hati</button>
+        <button class="btn-secondary" onclick="showTutorial('sambung_lirik')">Sambung Lirik</button>
+        <button class="btn-secondary" onclick="showTutorial('estafet_bom')">Estafet Bom</button>
+    </div>
+
+    <!-- Pop Up Tutorial -->
+    <div id="tutorialModal" class="modal">
+        <div class="modal-content">
+            <h2 id="tutorialTitle">Judul Game</h2>
+            <p id="tutorialText">Deskripsi dan cara mainnya muncul di sini.</p>
+            <button id="btnStartGame" onclick="startGame()">Mulai Game</button>
+            <button class="btn-danger" onclick="closeTutorial()">Batal</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Modular) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, deleteField } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyClM-QyNTd9C-lnVueyIuSpUhO4lf12xNs",
+            authDomain: "pestapora-2a81f.firebaseapp.com",
+            projectId: "pestapora-2a81f",
+            storageBucket: "pestapora-2a81f.firebasestorage.app",
+            messagingSenderId: "114245505122",
+            appId: "1:114245505122:web:7ec3e911c70fd8df3d013b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // State Global
+        let myId = localStorage.getItem('playerId') || 'P_' + Math.random().toString(36).substr(2, 6);
+        let myName = localStorage.getItem('playerName') || '';
+        let currentRoom = localStorage.getItem('roomId') || null;
+        let isHost = false;
+        let selectedGameMode = '';
+        let unsubscribe = null;
+
+        // Auto-Rejoin Logic
+        window.onload = async () => {
+            if (currentRoom && myName) {
+                const roomRef = doc(db, "rooms", currentRoom);
+                const roomSnap = await getDoc(roomRef);
+                if (roomSnap.exists() && roomSnap.data().players[myId]) {
+                    document.getElementById('playerName').value = myName;
+                    listenToRoom(currentRoom);
+                    showScreen('lobbyScreen');
+                } else {
+                    localStorage.removeItem('roomId');
+                    currentRoom = null;
+                }
+            }
+        };
+
+        // Cegah Refresh ga sengaja
+        window.addEventListener('beforeunload', (e) => {
+            if(currentRoom) e.returnValue = 'Yakin mau keluar?';
+        });
+
+        window.createRoom = async () => {
+            const name = document.getElementById('playerName').value.trim();
+            if(!name) return alert("Isi nama dulu!");
+            
+            const roomCode = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit angka
+            const roomRef = doc(db, "rooms", roomCode);
+            
+            await setDoc(roomRef, {
+                hostId: myId,
+                status: "waiting",
+                players: {
+                    [myId]: { nama: name, tim: "merah", is_online: true }
+                }
+            });
+
+            saveSession(name, roomCode);
+            listenToRoom(roomCode);
+            showScreen('lobbyScreen');
+        };
+
+        window.joinRoom = async () => {
+            const name = document.getElementById('playerName').value.trim();
+            const roomCode = document.getElementById('roomCodeInput').value.trim();
+            if(!name || !roomCode) return alert("Isi nama & kode room!");
+
+            const roomRef = doc(db, "rooms", roomCode);
+            const roomSnap = await getDoc(roomRef);
+            
+            if (roomSnap.exists()) {
+                await updateDoc(roomRef, {
+                    [`players.${myId}`]: { nama: name, tim: "biru", is_online: true }
+                });
+                saveSession(name, roomCode);
+                listenToRoom(roomCode);
+                showScreen('lobbyScreen');
+            } else {
+                alert("Room tidak ditemukan!");
+            }
+        };
+
+        function saveSession(name, roomCode) {
+            myName = name; currentRoom = roomCode;
+            localStorage.setItem('playerId', myId);
+            localStorage.setItem('playerName', myName);
+            localStorage.setItem('roomId', currentRoom);
+        }
+
+        // Listener Real-time
+        function listenToRoom(roomCode) {
+            if(unsubscribe) unsubscribe();
+            document.getElementById('displayRoomCode').innerText = roomCode;
+            const roomRef = doc(db, "rooms", roomCode);
+
+            unsubscribe = onSnapshot(roomRef, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const data = docSnap.data();
+                
+                // Cek status kick
+                if(!data.players[myId]) {
+                    alert("Kamu dikeluarkan dari room.");
+                    localStorage.removeItem('roomId');
+                    location.reload();
+                }
+
+                isHost = data.hostId === myId;
+                renderPlayers(data.players);
+                
+                // Atur visibilitas UI
+                document.getElementById('hostControls').style.display = isHost ? 'block' : 'none';
+                document.getElementById('waitingText').style.display = !isHost ? 'block' : 'none';
+
+                // Routing status
+                if(data.status === "selecting_game" && !isHost) showScreen('lobbyScreen'); // Wait in lobby
+                if(data.status === "tutorial") showTutorialScreen(data.mode);
+            });
+        }
+
+        function renderPlayers(players) {
+            const list = document.getElementById('playerList');
+            list.innerHTML = '';
+            for (const [id, pData] of Object.entries(players)) {
+                const isMe = id === myId ? " (Kamu)" : "";
+                const hostStar = id === isHost ? " 👑" : "";
+                const teamClass = pData.tim === "merah" ? "team-merah" : "team-biru";
+                
+                let actionBtn = '';
+                if(isHost) {
+                    actionBtn = `
+                        <button style="width:auto; padding:5px; margin:0 5px;" onclick="switchTeam('${id}', '${pData.tim}')">🔄</button>
+                        ${id !== myId ? `<button class="btn-danger" style="width:auto; padding:5px;" onclick="kickPlayer('${id}')">❌</button>` : ''}
+                    `;
+                }
+
+                list.innerHTML += `
+                    <div class="player-item ${teamClass}">
+                        <span>${pData.nama}${isMe}${hostStar}</span>
+                        <div>${actionBtn}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Fungsi Host
+        window.switchTeam = async (targetId, currentTeam) => {
+            const newTeam = currentTeam === "merah" ? "biru" : "merah";
+            await updateDoc(doc(db, "rooms", currentRoom), {
+                [`players.${targetId}.tim`]: newTeam
+            });
+        };
+
+        window.kickPlayer = async (targetId) => {
+            await updateDoc(doc(db, "rooms", currentRoom), {
+                [`players.${targetId}`]: deleteField()
+            });
+        };
+
+        window.randomizeTeams = async () => {
+            const roomRef = doc(db, "rooms", currentRoom);
+            const snap = await getDoc(roomRef);
+            const players = Object.keys(snap.data().players);
+            
+            players.sort(() => Math.random() - 0.5); // Shuffle
+            const updates = {};
+            players.forEach((pid, index) => {
+                updates[`players.${pid}.tim`] = index % 2 === 0 ? "merah" : "biru";
+            });
+            await updateDoc(roomRef, updates);
+        };
+
+        window.goToGameSelection = async () => {
+            showScreen('gameSelectionScreen');
+            await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game" });
+        };
+
+        window.showTutorial = async (gameId) => {
+            selectedGameMode = gameId;
+            await updateDoc(doc(db, "rooms", currentRoom), { 
+                status: "tutorial", mode: gameId 
+            });
+        };
+
+        // Fungsi Layar (Non-Host & Host)
+        window.showTutorialScreen = (mode) => {
+            const titles = {
+                party: "Mode Party 🎉", top_survei: "Top Survei", 
+                satu_hati: "Satu Hati", sambung_lirik: "Sambung Lirik", estafet_bom: "Estafet Bom"
+            };
+            const desc = {
+                party: "Mainkan 4 game secara berurutan. Kumpulkan poin tertinggi!",
+                top_survei: "Tebak jawaban paling populer dari survei.",
+                satu_hati: "Ketik jawaban yang sama persis dengan teman setimmu.",
+                sambung_lirik: "Rebutan ngetik kata yang hilang di lirik lagu.",
+                estafet_bom: "Jawab cepat sebelum 10 detik atau bom meledak!"
+            };
+
+            document.getElementById('tutorialTitle').innerText = titles[mode];
+            document.getElementById('tutorialText').innerText = desc[mode];
+            document.getElementById('btnStartGame').style.display = isHost ? 'inline-block' : 'none';
+            document.getElementById('tutorialModal').style.display = 'flex';
+        };
+
+        window.closeTutorial = async () => {
+            document.getElementById('tutorialModal').style.display = 'none';
+            if(isHost) {
+                await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game" });
+            }
+        };
+
+        window.startGame = async () => {
+            alert("Game dimulai! (Nanti redirect ke halaman game)");
+            // Logika redirect / update state 'playing' masuk sini
+        };
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.container').forEach(el => el.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
