@@ -4,35 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Admin - PestaPora</title>
-    <!-- Font lucu menyamakan dengan index.html -->
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #fdf6e3;
-            --primary: #FFB7B2;
-            --secondary: #B5EAD7;
-            --accent: #C7CEEA;
-            --danger: #FFDAC1;
-            --text: #555;
+            --bg-color: #fdf6e3; --primary: #FFB7B2; --secondary: #B5EAD7;
+            --accent: #C7CEEA; --danger: #FFDAC1; --text: #555;
             --sidebar-width: 250px;
         }
         body {
-            font-family: 'Fredoka', sans-serif;
-            background: linear-gradient(135deg, var(--bg-color), #ffecd2);
-            color: var(--text);
-            margin: 0;
-            display: flex;
-            height: 100vh;
-            box-sizing: border-box;
+            font-family: 'Fredoka', sans-serif; background: linear-gradient(135deg, var(--bg-color), #ffecd2);
+            color: var(--text); margin: 0; display: flex; height: 100vh; box-sizing: border-box;
         }
         
-        /* Custom Toast Notification */
         #toast {
             visibility: hidden; min-width: 250px; margin-left: -125px;
-            background-color: #333; color: #fff; text-align: center;
-            border-radius: 12px; padding: 16px; position: fixed;
-            z-index: 2000; left: 50%; bottom: 30px; font-size: 16px;
-            font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            background-color: #333; color: #fff; text-align: center; border-radius: 12px; 
+            padding: 16px; position: fixed; z-index: 2000; left: 50%; bottom: 30px; 
+            font-size: 16px; font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
         #toast.error { background-color: #ff4757; }
@@ -40,24 +28,20 @@
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
 
-        /* Login Screen */
         #loginScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, var(--bg-color), #ffecd2);
             display: flex; justify-content: center; align-items: center; z-index: 1000;
         }
         .login-box {
-            background: white; padding: 40px; border-radius: 24px;
-            box-shadow: 0 10px 20px rgba(255, 183, 178, 0.3); text-align: center;
-            border: 4px solid var(--primary); width: 90%; max-width: 320px;
+            background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 20px rgba(255, 183, 178, 0.3); 
+            text-align: center; border: 4px solid var(--primary); width: 90%; max-width: 320px;
         }
         
-        /* Dashboard Layout */
         #dashboardScreen { display: none; width: 100%; }
         .sidebar {
             width: var(--sidebar-width); background: white; padding: 20px 0;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.05); z-index: 10;
-            border-right: 4px solid var(--accent);
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05); z-index: 10; border-right: 4px solid var(--accent);
         }
         .sidebar h2 { text-align: center; color: #ff8b94; margin-bottom: 30px; font-size: 28px; }
         .nav-item {
@@ -76,34 +60,36 @@
         .panel.active { display: block; animation: fadeIn 0.4s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Form Elements */
         input, textarea {
-            width: 100%; padding: 15px; margin: 10px 0;
-            border-radius: 12px; border: 2px solid #ddd; font-size: 16px;
-            box-sizing: border-box; font-family: 'Fredoka', sans-serif;
-            outline: none; transition: 0.2s;
+            width: 100%; padding: 15px; margin: 10px 0; border-radius: 12px; 
+            border: 2px solid #ddd; font-size: 16px; box-sizing: border-box; 
+            font-family: 'Fredoka', sans-serif; outline: none; transition: 0.2s;
         }
         input:focus, textarea:focus { border-color: var(--secondary); }
         
         button {
-            width: 100%; padding: 15px; margin: 15px 0 5px; border-radius: 15px; 
-            border: none; background-color: var(--primary); color: white; cursor: pointer; 
-            font-weight: 600; font-size: 18px; font-family: 'Fredoka', sans-serif; 
-            box-shadow: 0 6px 0px rgba(230, 150, 145, 0.8); transition: transform 0.1s, box-shadow 0.1s;
+            width: 100%; padding: 15px; margin: 15px 0 5px; border-radius: 15px; border: none; 
+            background-color: var(--primary); color: white; cursor: pointer; font-weight: 600; 
+            font-size: 18px; font-family: 'Fredoka', sans-serif; box-shadow: 0 6px 0px rgba(230, 150, 145, 0.8); 
+            transition: transform 0.1s, box-shadow 0.1s;
         }
         button:active { transform: translateY(6px); box-shadow: 0 0px 0px rgba(230, 150, 145, 0.8); }
+        .btn-small { width: auto; padding: 8px 15px; font-size: 14px; margin: 0; box-shadow: 0 4px 0px rgba(220, 100, 100, 0.8); background-color: #ff7b7b;}
+        .btn-small:active { transform: translateY(4px); box-shadow: 0 0px 0px rgba(220, 100, 100, 0.8); }
         
         .form-group { margin-bottom: 20px; text-align: left; }
         label { font-weight: 700; font-size: 16px; color: #ff8b94; }
         h3 { margin-top: 0; color: #555; font-size: 24px; border-bottom: 2px dashed #eee; padding-bottom: 15px; }
+
+        .list-container { margin-top: 30px; border-top: 2px dashed #eee; padding-top: 20px; }
+        .list-item { background: #fdfdfd; border: 2px solid #eee; border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; text-align: left; }
+        .list-text { font-weight: 600; color: #555; font-size: 15px; margin-right: 15px; flex-grow: 1; }
     </style>
 </head>
 <body>
 
-    <!-- Notifikasi Toast -->
     <div id="toast">Notifikasi muncul di sini</div>
 
-    <!-- Layar Login -->
     <div id="loginScreen">
         <div class="login-box">
             <h2 style="color: #ff8b94; font-size: 32px; margin-bottom: 5px;">Admin 🔒</h2>
@@ -113,29 +99,56 @@
         </div>
     </div>
 
-    <!-- Layar Dashboard -->
     <div id="dashboardScreen">
         <div class="sidebar">
             <h2>Dapur Soal</h2>
-            <div class="nav-item active" onclick="switchTab('topSurvei', this)">📊 Top Survei</div>
+            <div class="nav-item active" onclick="switchTab('pengaturan', this)">⚙️ Aturan Main</div>
+            <div class="nav-item" onclick="switchTab('topSurvei', this)">📊 Top Survei</div>
             <div class="nav-item" onclick="switchTab('satuHati', this)">💞 Satu Hati</div>
             <div class="nav-item" onclick="switchTab('sambungLirik', this)">🎤 Sambung Lirik</div>
             <div class="nav-item" onclick="switchTab('estafetBom', this)">💣 Estafet Bom</div>
         </div>
 
         <div class="content">
+            <!-- Panel Pengaturan -->
+            <div id="pengaturan" class="panel active">
+                <h3>Aturan Main & Durasi</h3>
+                <div class="form-group">
+                    <label>Maksimal Ronde per Game</label>
+                    <input type="number" id="setRonde" placeholder="Contoh: 5">
+                </div>
+                <div class="form-group">
+                    <label>Durasi Top Survei (Detik)</label>
+                    <input type="number" id="setTS" placeholder="Contoh: 60">
+                </div>
+                <div class="form-group">
+                    <label>Durasi Satu Hati (Detik)</label>
+                    <input type="number" id="setSH" placeholder="Contoh: 20">
+                </div>
+                <div class="form-group">
+                    <label>Durasi Sambung Lirik (Detik)</label>
+                    <input type="number" id="setSL" placeholder="Contoh: 20">
+                </div>
+                <div class="form-group">
+                    <label>Durasi Estafet Bom (Detik)</label>
+                    <input type="number" id="setEB" placeholder="Contoh: 15">
+                </div>
+                <button onclick="simpanPengaturan()">💾 Simpan Aturan</button>
+            </div>
+
             <!-- Panel Top Survei -->
-            <div id="topSurvei" class="panel active">
+            <div id="topSurvei" class="panel">
                 <h3>Tambah Soal: Top Survei</h3>
                 <div class="form-group">
                     <label>Pertanyaan Survei</label>
                     <input type="text" id="tsPertanyaan" placeholder="Contoh: Alasan orang telat ngantor">
                 </div>
                 <div class="form-group">
-                    <label>Jawaban (Pisahkan dengan koma, urutkan dari yang paling sering dijawab)</label>
+                    <label>Jawaban (Pisahkan dengan koma, urutkan dari yang paling sering)</label>
                     <textarea id="tsJawaban" rows="3" placeholder="Macet, Kesiangan, Ban Bocor, Hujan"></textarea>
                 </div>
-                <button onclick="simpanTopSurvei()">💾 Simpan Soal Survei</button>
+                <button onclick="simpanTopSurvei()">➕ Tambah Soal</button>
+                <div class="list-container" id="list-top_survei"><h3>Daftar Soal Tersimpan</h3><div id="render-top_survei">Memuat...</div></div>
             </div>
 
             <!-- Panel Satu Hati -->
@@ -145,17 +158,19 @@
                     <label>Kategori / Prompt</label>
                     <input type="text" id="shPrompt" placeholder="Contoh: Sebutkan satu merek mi instan kuah">
                 </div>
-                <button onclick="simpanSatuHati()">💾 Simpan Soal Satu Hati</button>
+                <button onclick="simpanSatuHati()">➕ Tambah Soal</button>
+                <div class="list-container" id="list-satu_hati"><h3>Daftar Soal Tersimpan</h3><div id="render-satu_hati">Memuat...</div></div>
             </div>
 
             <!-- Panel Sambung Lirik -->
             <div id="sambungLirik" class="panel">
                 <h3>Tambah Soal: Sambung Lirik</h3>
                 <div class="form-group">
-                    <label>Lirik Lagu Lengkap (Sistem akan sensor 1 kata acak otomatis)</label>
+                    <label>Lirik Lagu Lengkap (Sistem akan memotong lirik panjang & sensor 1 kata acak)</label>
                     <textarea id="slLirik" rows="3" placeholder="Contoh: Bisa saja bencana yang datang esok hari"></textarea>
                 </div>
-                <button onclick="simpanSambungLirik()">💾 Simpan Soal Lirik</button>
+                <button onclick="simpanSambungLirik()">➕ Tambah Soal</button>
+                <div class="list-container" id="list-sambung_lirik"><h3>Daftar Soal Tersimpan</h3><div id="render-sambung_lirik">Memuat...</div></div>
             </div>
 
             <!-- Panel Estafet Bom -->
@@ -165,7 +180,12 @@
                     <label>Kategori Bom (Kata tidak boleh diulang pemain)</label>
                     <input type="text" id="ebKategori" placeholder="Contoh: Hewan berawalan huruf K">
                 </div>
-                <button onclick="simpanEstafetBom()">💾 Simpan Soal Bom</button>
+                <div class="form-group">
+                    <label>Daftar Jawaban Valid (Pisahkan dengan koma)</label>
+                    <textarea id="ebJawaban" rows="3" placeholder="Kucing, Kadal, Kuda, Kambing, Katak"></textarea>
+                </div>
+                <button onclick="simpanEstafetBom()">➕ Tambah Soal</button>
+                <div class="list-container" id="list-estafet_bom"><h3>Daftar Soal Tersimpan</h3><div id="render-estafet_bom">Memuat...</div></div>
             </div>
         </div>
     </div>
@@ -173,7 +193,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, addDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyClM-QyNTd9C-lnVueyIuSpUhO4lf12xNs",
@@ -187,15 +207,12 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Fungsi Toast Notification (Ganti Alert Biasa)
         window.showToast = (msg, type = 'success') => {
             const toast = document.getElementById("toast");
-            toast.innerText = msg;
-            toast.className = `show ${type}`;
+            toast.innerText = msg; toast.className = `show ${type}`;
             setTimeout(() => { toast.className = toast.className.replace(`show ${type}`, ""); }, 3000);
         };
 
-        // Login
         window.login = async () => {
             const passInput = document.getElementById('adminPassword').value;
             try {
@@ -204,60 +221,111 @@
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('dashboardScreen').style.display = 'flex';
                     showToast("Login Berhasil! 🎉", "success");
-                } else {
-                    showToast("Password salah! Coba lagi.", "error");
-                }
-            } catch (e) {
-                showToast("Gagal koneksi ke database!", "error");
-            }
+                    muatPengaturan();
+                } else { showToast("Password salah! Coba lagi.", "error"); }
+            } catch (e) { showToast("Gagal koneksi ke database!", "error"); }
         };
 
-        // Navigasi Tab
         window.switchTab = (tabId, element) => {
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             element.classList.add('active');
+
+            // Muat ulang daftar soal tiap pindah tab
+            const mapIdToGame = { 'topSurvei': 'top_survei', 'satuHati': 'satu_hati', 'sambungLirik': 'sambung_lirik', 'estafetBom': 'estafet_bom' };
+            if (mapIdToGame[tabId]) muatDaftarSoal(mapIdToGame[tabId]);
         };
 
-        // Core Save Function
+        // --- MANAJEMEN PENGATURAN ---
+        async function muatPengaturan() {
+            try {
+                const docSnap = await getDoc(doc(db, "pengaturan", "rules"));
+                if(docSnap.exists()) {
+                    const d = docSnap.data();
+                    document.getElementById('setRonde').value = d.max_ronde || 5;
+                    document.getElementById('setTS').value = d.durasi_ts || 60;
+                    document.getElementById('setSH').value = d.durasi_sh || 20;
+                    document.getElementById('setSL').value = d.durasi_sl || 20;
+                    document.getElementById('setEB').value = d.durasi_eb || 15;
+                }
+            } catch(e) {}
+        }
+
+        window.simpanPengaturan = async () => {
+            const data = {
+                max_ronde: parseInt(document.getElementById('setRonde').value) || 5,
+                durasi_ts: parseInt(document.getElementById('setTS').value) || 60,
+                durasi_sh: parseInt(document.getElementById('setSH').value) || 20,
+                durasi_sl: parseInt(document.getElementById('setSL').value) || 20,
+                durasi_eb: parseInt(document.getElementById('setEB').value) || 15
+            };
+            try {
+                await setDoc(doc(db, "pengaturan", "rules"), data);
+                showToast("Pengaturan berhasil disimpan! ⚙️", "success");
+            } catch (e) { showToast("Gagal menyimpan pengaturan!", "error"); }
+        };
+
+        // --- MANAJEMEN CRUD SOAL ---
+        async function muatDaftarSoal(gameId) {
+            const container = document.getElementById(`render-${gameId}`);
+            container.innerHTML = "Memuat...";
+            try {
+                const qSnap = await getDocs(collection(db, `bank_soal/${gameId}/soal`));
+                if(qSnap.empty) { container.innerHTML = "<p style='color:#888;'>Belum ada soal tersimpan.</p>"; return; }
+                
+                let html = '';
+                qSnap.forEach(docSnap => {
+                    const id = docSnap.id; const d = docSnap.data();
+                    let teks = '';
+                    if(gameId === 'top_survei') teks = `<b>${d.pertanyaan}</b> (${d.jawaban.length} Jawaban)`;
+                    else if(gameId === 'satu_hati') teks = `<b>${d.prompt}</b>`;
+                    else if(gameId === 'sambung_lirik') teks = `<b>Sensor:</b> ${d.jawaban_benar} <br><small>${d.lirik_tampil}</small>`;
+                    else if(gameId === 'estafet_bom') teks = `<b>${d.kategori}</b> (${d.jawaban_benar ? d.jawaban_benar.length : 0} Jawaban Valid)`;
+
+                    html += `<div class="list-item"><div class="list-text">${teks}</div>
+                             <button class="btn-small" onclick="hapusSoal('${gameId}', '${id}')">Hapus 🗑️</button></div>`;
+                });
+                container.innerHTML = html;
+            } catch (e) { container.innerHTML = "<p style='color:red;'>Gagal memuat daftar soal.</p>"; }
+        }
+
+        window.hapusSoal = async (gameId, docId) => {
+            if(!confirm("Yakin mau menghapus soal ini?")) return;
+            try {
+                await deleteDoc(doc(db, `bank_soal/${gameId}/soal`, docId));
+                showToast("Soal dihapus! 🗑️", "success");
+                muatDaftarSoal(gameId);
+            } catch (e) { showToast("Gagal menghapus soal!", "error"); }
+        };
+
         async function saveToDB(gameId, data) {
             try {
                 await addDoc(collection(db, `bank_soal/${gameId}/soal`), data);
                 showToast("Berhasil! Soal sudah masuk ke database. ✅", "success");
                 document.querySelectorAll('input[type="text"], textarea').forEach(el => el.value = '');
-            } catch (e) {
-                console.error("Error saving:", e);
-                showToast("Waduh, gagal menyimpan soal! ❌", "error");
-            }
+                muatDaftarSoal(gameId);
+            } catch (e) { showToast("Waduh, gagal menyimpan soal! ❌", "error"); }
         }
 
-        // Logic Top Survei
+        // --- LOGIC GAME ---
         window.simpanTopSurvei = () => {
             const pert = document.getElementById('tsPertanyaan').value.trim();
             const rawJawaban = document.getElementById('tsJawaban').value;
             if(!pert || !rawJawaban) return showToast("Mohon isi pertanyaan dan jawabannya!", "error");
-
             const answers = rawJawaban.split(',').map(s => s.trim()).filter(s => s !== "");
             if(answers.length === 0) return showToast("Format jawaban salah!", "error");
-
-            const n = answers.length;
-            const sum = (n * (n + 1)) / 2;
-            const jawabanData = answers.map((ans, index) => {
-                return { teks: ans.toLowerCase(), poin: Math.round((100 / sum) * (n - index)) };
-            });
-
+            const n = answers.length; const sum = (n * (n + 1)) / 2;
+            const jawabanData = answers.map((ans, index) => { return { teks: ans.toLowerCase(), poin: Math.round((100 / sum) * (n - index)) }; });
             saveToDB('top_survei', { pertanyaan: pert, jawaban: jawabanData });
         };
 
-        // Logic Satu Hati
         window.simpanSatuHati = () => {
             const prompt = document.getElementById('shPrompt').value.trim();
             if(!prompt) return showToast("Kolom kategori tidak boleh kosong!", "error");
             saveToDB('satu_hati', { prompt: prompt });
         };
 
-        // Logic Sambung Lirik
         window.simpanSambungLirik = () => {
             const lirikLengkap = document.getElementById('slLirik').value.trim();
             if(!lirikLengkap) return showToast("Liriknya jangan dikosongin dong!", "error");
@@ -273,19 +341,34 @@
 
             if(validIndices.length === 0) return showToast("Lirik terlalu pendek atau tidak ada kata yang pas.", "error");
 
+            // Smart Lirik: Potong teks panjang
             const pickIdx = validIndices[Math.floor(Math.random() * validIndices.length)];
-            const targetWordClean = words[pickIdx].replace(/[^a-zA-Z0-9]/g, ''); 
-            const kataSensor = words[pickIdx].replace(targetWordClean, '_________');
-            const lirikTampil = words.map((w, i) => i === pickIdx ? kataSensor : w).join(' ');
+            const start = Math.max(0, pickIdx - 10);
+            const end = Math.min(words.length, pickIdx + 11); // 10 kata sesudah
+            
+            let potongWords = words.slice(start, end);
+            const potongIdx = pickIdx - start; // Posisi kata sensor di array yang baru dipotong
+
+            const targetWordClean = potongWords[potongIdx].replace(/[^a-zA-Z0-9]/g, ''); 
+            const kataSensor = potongWords[potongIdx].replace(targetWordClean, '_________');
+            potongWords[potongIdx] = kataSensor;
+
+            let lirikTampil = potongWords.join(' ');
+            if (start > 0) lirikTampil = '... ' + lirikTampil;
+            if (end < words.length) lirikTampil = lirikTampil + ' ...';
 
             saveToDB('sambung_lirik', { lirik_tampil: lirikTampil, jawaban_benar: targetWordClean.toLowerCase() });
         };
 
-        // Logic Estafet Bom
         window.simpanEstafetBom = () => {
             const kategori = document.getElementById('ebKategori').value.trim();
-            if(!kategori) return showToast("Isi kategori bom dulu!", "error");
-            saveToDB('estafet_bom', { kategori: kategori });
+            const rawJawaban = document.getElementById('ebJawaban').value.trim();
+            if(!kategori || !rawJawaban) return showToast("Isi kategori dan daftar jawaban valid!", "error");
+            
+            const answers = rawJawaban.split(',').map(s => s.trim().toLowerCase()).filter(s => s !== "");
+            if(answers.length === 0) return showToast("Format daftar jawaban salah!", "error");
+
+            saveToDB('estafet_bom', { kategori: kategori, jawaban_benar: answers });
         };
     </script>
 </body>
