@@ -140,6 +140,10 @@
             <button onclick="goToGameSelection()">Pilih Game 🎮</button>
         </div>
         <p id="waitingText" style="display: none; font-weight: bold; color: #ff8b94;">Menunggu Host memulai...</p>
+
+        <!-- Tambahan Tombol Keluar Room -->
+        <hr style="border-top: 2px dashed #eee; margin: 20px 0;">
+        <button class="btn-danger" style="background-color: #ff7b7b; color: white;" onclick="leaveRoom()">🚪 Keluar Room</button>
     </div>
 
     <!-- Halaman 3: Pemilihan Game -->
@@ -152,7 +156,7 @@
         <button class="btn-secondary" onclick="showTutorial('estafet_bom')">💣 Estafet Bom</button>
     </div>
 
-    <!-- Halaman 4: Arena Bermain (Baru Ditambahkan) -->
+    <!-- Halaman 4: Arena Bermain -->
     <div id="gameScreen" class="container">
         <h2 id="inGameTitle">Memuat Game...</h2>
         <div id="gameArena">
@@ -172,7 +176,7 @@
 
     <!-- Firebase SDK (Modular) -->
     <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, deleteField, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -194,7 +198,7 @@
         let isHost = false;
         let selectedGameMode = '';
         let unsubscribe = null;
-        window.bomInterval = null; // Khusus timer bom
+        window.bomInterval = null;
 
         // Auto-Rejoin & Prevent Refresh
         window.onload = async () => {
@@ -241,6 +245,23 @@
             myName = name; currentRoom = roomCode;
             localStorage.setItem('playerId', myId); localStorage.setItem('playerName', myName); localStorage.setItem('roomId', currentRoom);
         }
+
+        // Fungsi Keluar Room
+        window.leaveRoom = async () => {
+            const confirmLeave = confirm("Yakin mau keluar dari room ini?");
+            if (!confirmLeave) return;
+
+            if (currentRoom && myId) {
+                const roomRef = doc(db, "rooms", currentRoom);
+                await updateDoc(roomRef, {
+                    [`players.${myId}`]: deleteField()
+                });
+            }
+
+            localStorage.removeItem('roomId');
+            currentRoom = null;
+            location.reload();
+        };
 
         // Real-time Listener
         function listenToRoom(roomCode) {
@@ -339,7 +360,7 @@
 
                 const roomSnap = await getDoc(doc(db, "rooms", currentRoom));
                 const players = Object.keys(roomSnap.data().players);
-                const firstBomber = players[Math.floor(Math.random() * players.length)]; // Pilih 1 orang acak pegang bom
+                const firstBomber = players[Math.floor(Math.random() * players.length)]; 
 
                 await updateDoc(doc(db, "rooms", currentRoom), { 
                     status: "playing",
@@ -358,7 +379,6 @@
             const title = document.getElementById('inGameTitle');
             const hostBtn = isHost ? `<hr style="border-top: 2px dashed #eee; margin: 25px 0;"><button class="btn-secondary" onclick="goToGameSelection()">Kembali ke Menu Game</button>` : '';
 
-            // Bersihkan timer lama jika bukan di estafet bom atau beda ronde
             if(state.mode !== 'estafet_bom' && window.bomInterval) clearInterval(window.bomInterval);
 
             if (state.mode === 'top_survei') {
@@ -459,7 +479,7 @@
             }
             else if (state.mode === 'estafet_bom') {
                 title.innerText = "Estafet Bom 💣";
-                if(window.bomInterval) clearInterval(window.bomInterval); // Bersihin timer sblm dirender ulang
+                if(window.bomInterval) clearInterval(window.bomInterval);
 
                 if (state.tahap === "ngetik") {
                     const isMyTurn = state.bom_holder === myId;
@@ -488,7 +508,6 @@
 
                     if(isMyTurn) setTimeout(() => { const inp = document.getElementById('jawabanEB'); if(inp) inp.focus(); }, 100);
 
-                    // Logic Detak Timer
                     window.bomInterval = setInterval(async () => {
                         const sisa = Math.max(0, state.waktu_habis - Date.now());
                         const elTimer = document.getElementById('bomTimer');
@@ -496,7 +515,7 @@
 
                         if (sisa <= 0) {
                             clearInterval(window.bomInterval);
-                            if (isHost) { // Biar cuma 1 hp (Host) yang nge-trigger bom meledak ke database
+                            if (isHost) { 
                                 const timKalah = holderTeam;
                                 const timMenang = timKalah === 'merah' ? 'biru' : 'merah';
                                 const fieldSkor = timMenang === 'merah' ? 'game_state.skor_merah' : 'game_state.skor_biru';
@@ -530,8 +549,6 @@
         }
 
         // --- SUBMIT JAWABAN UNTUK SEMUA GAME ---
-
-        // FUNGSI TOP SURVEI
         window.submitJawaban = async () => {
             const inputEl = document.getElementById('jawabanInput');
             const tebakan = inputEl.value.trim().toLowerCase();
@@ -554,7 +571,6 @@
             }
         }
 
-        // FUNGSI SATU HATI
         window.submitSH = async () => {
             const inputEl = document.getElementById('jawabanSH');
             const tebakan = inputEl.value.trim().toLowerCase();
@@ -582,7 +598,6 @@
             await updateDoc(roomRef, { "game_state.tahap": "hasil", "game_state.skor_merah": state.skor_merah + pointMerah, "game_state.skor_biru": state.skor_biru + pointBiru });
         };
 
-        // FUNGSI SAMBUNG LIRIK
         window.submitSL = async () => {
             const inputEl = document.getElementById('jawabanSL');
             if(!inputEl) return;
@@ -606,7 +621,6 @@
             }
         };
 
-        // FUNGSI ESTAFET BOM
         window.submitEB = async () => {
             const inputEl = document.getElementById('jawabanEB');
             if(!inputEl) return;
