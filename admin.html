@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - Party Game</title>
+    <style>
+        :root {
+            --bg-color: #fdf6e3;
+            --primary: #ffb3ba;
+            --secondary: #baffc9;
+            --accent: #bae1ff;
+            --text: #555;
+            --danger: #ffdfba;
+            --sidebar-width: 250px;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+        }
+        /* Login Screen */
+        #loginScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+        .login-box {
+            background: white; padding: 30px; border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;
+        }
+        /* Dashboard Layout */
+        #dashboardScreen {
+            display: none; width: 100%;
+        }
+        .sidebar {
+            width: var(--sidebar-width); background: white; padding: 20px 0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+        }
+        .sidebar h2 { text-align: center; color: #ff8b94; margin-bottom: 30px; }
+        .nav-item {
+            padding: 15px 20px; cursor: pointer; border-left: 5px solid transparent;
+            transition: 0.2s; font-weight: bold;
+        }
+        .nav-item:hover { background: #f9f9f9; }
+        .nav-item.active { background: #f0f0f0; border-left-color: var(--primary); color: #ff8b94; }
+        .content {
+            flex-grow: 1; padding: 30px; overflow-y: auto;
+        }
+        .panel { display: none; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .panel.active { display: block; }
+        
+        /* Form Elements */
+        input, textarea, button {
+            width: 100%; padding: 12px; margin: 10px 0;
+            border-radius: 8px; border: 1px solid #ddd; font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: var(--primary); color: white; border: none;
+            cursor: pointer; font-weight: bold;
+        }
+        button:hover { filter: brightness(0.9); }
+        .form-group { margin-bottom: 15px; }
+        label { font-weight: bold; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <!-- Layar Login -->
+    <div id="loginScreen">
+        <div class="login-box">
+            <h2 style="color: #ff8b94;">Admin Login 🔒</h2>
+            <input type="password" id="adminPassword" placeholder="Masukkan Password">
+            <button onclick="login()">Masuk</button>
+            <p id="loginError" style="color: red; display: none;">Password salah!</p>
+        </div>
+    </div>
+
+    <!-- Layar Dashboard -->
+    <div id="dashboardScreen">
+        <div class="sidebar">
+            <h2>Party Admin</h2>
+            <div class="nav-item active" onclick="switchTab('topSurvei')">Top Survei</div>
+            <div class="nav-item" onclick="switchTab('satuHati')">Satu Hati</div>
+            <div class="nav-item" onclick="switchTab('sambungLirik')">Sambung Lirik</div>
+            <div class="nav-item" onclick="switchTab('estafetBom')">Estafet Bom</div>
+        </div>
+
+        <div class="content">
+            <!-- Panel Top Survei -->
+            <div id="topSurvei" class="panel active">
+                <h3>Tambah Soal: Top Survei</h3>
+                <div class="form-group">
+                    <label>Pertanyaan Survei</label>
+                    <input type="text" id="tsPertanyaan" placeholder="Contoh: Alasan orang telat ngantor">
+                </div>
+                <div class="form-group">
+                    <label>Jawaban (Pisahkan dengan koma, urutkan dari poin terbesar)</label>
+                    <textarea id="tsJawaban" rows="3" placeholder="Macet, Kesiangan, Ban Bocor, Hujan"></textarea>
+                </div>
+                <button onclick="simpanTopSurvei()">Simpan Soal</button>
+            </div>
+
+            <!-- Panel Satu Hati -->
+            <div id="satuHati" class="panel">
+                <h3>Tambah Soal: Satu Hati</h3>
+                <div class="form-group">
+                    <label>Prompt / Kategori</label>
+                    <input type="text" id="shPrompt" placeholder="Contoh: Sebutkan satu merek mi instan kuah">
+                </div>
+                <button onclick="simpanSatuHati()">Simpan Soal</button>
+            </div>
+
+            <!-- Panel Sambung Lirik -->
+            <div id="sambungLirik" class="panel">
+                <h3>Tambah Soal: Sambung Lirik</h3>
+                <div class="form-group">
+                    <label>Lirik Lagu Lengkap (Sistem akan sensor 1 kata otomatis)</label>
+                    <textarea id="slLirik" rows="3" placeholder="Contoh: Bisa saja bencana yang datang esok hari"></textarea>
+                </div>
+                <button onclick="simpanSambungLirik()">Simpan Soal</button>
+            </div>
+
+            <!-- Panel Estafet Bom -->
+            <div id="estafetBom" class="panel">
+                <h3>Tambah Soal: Estafet Bom</h3>
+                <div class="form-group">
+                    <label>Kategori Bom</label>
+                    <input type="text" id="ebKategori" placeholder="Contoh: Hewan berawalan huruf K">
+                </div>
+                <button onclick="simpanEstafetBom()">Simpan Soal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyClM-QyNTd9C-lnVueyIuSpUhO4lf12xNs",
+            authDomain: "pestapora-2a81f.firebaseapp.com",
+            projectId: "pestapora-2a81f",
+            storageBucket: "pestapora-2a81f.firebasestorage.app",
+            messagingSenderId: "114245505122",
+            appId: "1:114245505122:web:7ec3e911c70fd8df3d013b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Fungsi Login
+        window.login = async () => {
+            const passInput = document.getElementById('adminPassword').value;
+            try {
+                const docSnap = await getDoc(doc(db, "pengaturan", "admin"));
+                if (docSnap.exists() && docSnap.data().password === passInput) {
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('dashboardScreen').style.display = 'flex';
+                } else {
+                    document.getElementById('loginError').style.display = 'block';
+                }
+            } catch (e) {
+                console.error("Error login:", e);
+                alert("Gagal koneksi ke database. Pastikan Rules Firestore sudah disetting.");
+            }
+        };
+
+        // Fungsi Navigasi Tab
+        window.switchTab = (tabId) => {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        };
+
+        // Fungsi Simpan ke Firebase (Subcollection 'soal')
+        async function saveToDB(gameId, data) {
+            try {
+                await addDoc(collection(db, `bank_soal/${gameId}/soal`), data);
+                alert("Soal berhasil disimpan!");
+                document.querySelectorAll('input[type="text"], textarea').forEach(el => el.value = '');
+            } catch (e) {
+                console.error("Error saving:", e);
+                alert("Gagal menyimpan soal!");
+            }
+        }
+
+        // Logic Top Survei (Sistem Koma & Poin Berjenjang)
+        window.simpanTopSurvei = () => {
+            const pert = document.getElementById('tsPertanyaan').value.trim();
+            const rawJawaban = document.getElementById('tsJawaban').value;
+            if(!pert || !rawJawaban) return alert("Isi semua kolom!");
+
+            // Pecah koma dan bersihkan spasi
+            const answers = rawJawaban.split(',').map(s => s.trim()).filter(s => s !== "");
+            const n = answers.length;
+            const sum = (n * (n + 1)) / 2; // Rumus deret hitung untuk bagi poin berjenjang
+
+            const jawabanData = answers.map((ans, index) => {
+                const poin = Math.round((100 / sum) * (n - index)); // Kata pertama poin terbesar
+                return { teks: ans.toLowerCase(), poin: poin }; // Disimpan lowercase biar gampang dicocokin nanti
+            });
+
+            saveToDB('top_survei', { pertanyaan: pert, jawaban: jawabanData });
+        };
+
+        // Logic Satu Hati
+        window.simpanSatuHati = () => {
+            const prompt = document.getElementById('shPrompt').value.trim();
+            if(!prompt) return alert("Isi kolom prompt!");
+            saveToDB('satu_hati', { prompt: prompt });
+        };
+
+        // Logic Sambung Lirik (Sistem Sensor Otomatis)
+        window.simpanSambungLirik = () => {
+            const lirikLengkap = document.getElementById('slLirik').value.trim();
+            if(!lirikLengkap) return alert("Isi liriknya!");
+
+            const words = lirikLengkap.split(/\s+/);
+            const stopWords = ['di', 'ke', 'dari', 'yang', 'dan', 'atau', 'untuk', 'dengan', 'pada', 'dalam'];
+            let validIndices = [];
+
+            // Cari index kata yang valid (bukan stopwords dan bukan simbol doang)
+            words.forEach((w, i) => {
+                const cleanW = w.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if(cleanW.length > 2 && !stopWords.includes(cleanW)) validIndices.push(i);
+            });
+
+            if(validIndices.length === 0) return alert("Lirik terlalu pendek atau tidak ada kata yang pas untuk ditebak.");
+
+            // Pilih kata acak
+            const pickIdx = validIndices[Math.floor(Math.random() * validIndices.length)];
+            const targetWordClean = words[pickIdx].replace(/[^a-zA-Z0-9]/g, ''); // Ambil huruf/angkanya aja
+            
+            // Ganti kata asli di array dengan garis bawah, tapi biarkan kalau ada koma/titik nempel
+            const kataSensor = words[pickIdx].replace(targetWordClean, '_________');
+            const lirikTampil = words.map((w, i) => i === pickIdx ? kataSensor : w).join(' ');
+
+            saveToDB('sambung_lirik', { 
+                lirik_tampil: lirikTampil, 
+                jawaban_benar: targetWordClean.toLowerCase() 
+            });
+        };
+
+        // Logic Estafet Bom
+        window.simpanEstafetBom = () => {
+            const kategori = document.getElementById('ebKategori').value.trim();
+            if(!kategori) return alert("Isi kategori bom!");
+            saveToDB('estafet_bom', { kategori: kategori });
+        };
+    </script>
+</body>
+</html>
