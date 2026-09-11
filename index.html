@@ -8,7 +8,7 @@
     <style>
         :root {
             --bg-color: #f7fdf9; 
-            --primary: #A8E6CF; /* Hijau Pastel */
+            --primary: #A8E6CF; 
             --secondary: #DCEDC1; 
             --accent: #FFD3B6; 
             --danger: #FF8B94; 
@@ -241,7 +241,11 @@
                 document.getElementById('btnFloatingTakeover').style.display = (!isHost && currentRoom && data.status !== 'waiting') ? 'block' : 'none';
 
                 if(data.status === "waiting") showScreen('lobbyScreen');
-                else if(data.status === "selecting_game" && !isHost) showScreen('lobbyScreen');
+                else if(data.status === "selecting_game") {
+                    // FIX: Host diarahkan ke Game Selection, member ke Lobby
+                    if (isHost) showScreen('gameSelectionScreen');
+                    else showScreen('lobbyScreen');
+                }
                 else if(data.status === "tutorial") showTutorialScreen(data.mode);
                 else if(data.status === "playing") {
                     document.getElementById('tutorialModal').style.display = 'none';
@@ -288,13 +292,12 @@
 
         window.closeTutorial = async () => { document.getElementById('tutorialModal').style.display = 'none'; if(isHost) await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game" }); };
 
-        // --- SISTEM MULAI GAME ---
         window.startGame = async () => {
             document.getElementById('tutorialModal').style.display = 'none';
             const roomSnap = await getDoc(doc(db, "rooms", currentRoom));
             const players = roomSnap.data().players;
             
-            let roomUpdates = { status: "playing" };
+            let roomUpdates = {}; 
             let firstMode = selectedGameMode;
             
             if (selectedGameMode === 'party') {
@@ -353,21 +356,25 @@
                 gameState.prompt = data.prompt; gameState.jawaban_pemain = {};
                 gameState.waktu_habis = Date.now() + (defDurasi * 1000);
             } else if (mode === 'sambung_lirik') {
-                // PENGAMAN: Jika admin pakai format soal lama, fallback agar game tidak nge-freeze
-                const lirikMentah = data.lirik_lengkap || data.lirik_tampil || "bisa saja bencana yang datang esok hari";
-                
+                let lirikMentah = data.lirik_lengkap || data.lirik_tampil || "bisa saja bencana yang datang esok hari";
+                if(lirikMentah.trim() === "") lirikMentah = "Lirik kosong dari database";
+
                 const words = lirikMentah.split(/\s+/);
                 const stopWords = ['di', 'ke', 'dari', 'yang', 'dan', 'atau', 'untuk', 'dengan', 'pada', 'dalam'];
                 let validIndices = [];
                 words.forEach((w, i) => { const c = w.toLowerCase().replace(/[^a-z0-9]/g, ''); if(c.length > 2 && !stopWords.includes(c)) validIndices.push(i); });
                 
-                const pickIdx = validIndices.length > 0 ? validIndices[Math.floor(Math.random() * validIndices.length)] : Math.floor(words.length/2);
+                const pickIdx = validIndices.length > 0 ? validIndices[Math.floor(Math.random() * validIndices.length)] : (words.length > 0 ? Math.floor(words.length/2) : 0);
                 const start = Math.max(0, pickIdx - 10); const end = Math.min(words.length, pickIdx + 11);
                 
                 let potongWords = words.slice(start, end);
                 const potongIdx = pickIdx - start;
-                const targetWordClean = potongWords[potongIdx].replace(/[^a-zA-Z0-9]/g, '');
-                potongWords[potongIdx] = potongWords[potongIdx].replace(targetWordClean, '_________');
+                
+                let targetWordClean = "kata";
+                if (potongWords[potongIdx]) {
+                    targetWordClean = potongWords[potongIdx].replace(/[^a-zA-Z0-9]/g, '');
+                    potongWords[potongIdx] = potongWords[potongIdx].replace(targetWordClean, '_________');
+                }
                 
                 let lirikTampil = potongWords.join(' ');
                 if (start > 0) lirikTampil = '... ' + lirikTampil;
@@ -382,7 +389,8 @@
                 gameState.bom_holder = players[Math.floor(Math.random() * players.length)]; 
                 gameState.terjawab = []; gameState.waktu_habis = Date.now() + (defDurasi * 1000);
             }
-            await updateDoc(doc(db, "rooms", currentRoom), { game_state: gameState });
+            
+            await updateDoc(doc(db, "rooms", currentRoom), { status: "playing", game_state: gameState });
         };
 
         window.nextRound = async () => {
@@ -421,13 +429,21 @@
             }
         };
 
-        // --- RENDER ARENA ---
         function renderGamePlay(data) {
             const state = data.game_state;
             const arena = document.getElementById('gameArena');
             const title = document.getElementById('inGameTitle');
             const isParty = data.party_mode;
             
+            if (!state) {
+                title.innerText = "Waduh, Gagal Memuat ⚠️";
+                arena.innerHTML = `
+                    <p style="color:var(--danger); font-weight:bold;">Sistem gagal menarik data dari server. Permainan tersangkut.</p>
+                    <button class="btn-danger" style="background-color:#ffb3ba; color:white;" onclick="resetRoom()">🔄 Paksa Reset Room</button>
+                `;
+                return;
+            }
+
             if(window.bomInterval) clearInterval(window.bomInterval);
             if(window.mainInterval) clearInterval(window.mainInterval);
 
@@ -638,7 +654,6 @@
             }
         }
 
-        // --- INPUT JAWABAN & TAMBAH SKOR INDIVIDU ---
         window.submitJawaban = async () => {
             const inputEl = document.getElementById('jawabanInput');
             const tebakan = inputEl.value.trim().toLowerCase();
