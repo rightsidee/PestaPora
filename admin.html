@@ -8,7 +8,7 @@
     <style>
         :root {
             --bg-color: #f7fdf9; 
-            --primary: #A8E6CF; /* Hijau Pastel */
+            --primary: #A8E6CF; 
             --secondary: #DCEDC1; 
             --accent: #FFD3B6; 
             --danger: #FF8B94; 
@@ -296,14 +296,21 @@
                     let teks = '';
                     if(gameId === 'top_survei') teks = `<b>${d.pertanyaan}</b> (${d.jawaban.length} Jawaban)`;
                     else if(gameId === 'satu_hati') teks = `<b>${d.prompt}</b>`;
-                    else if(gameId === 'sambung_lirik') teks = `<b>Lirik:</b> <small>${d.lirik_lengkap.substring(0, 50)}...</small>`;
+                    else if(gameId === 'sambung_lirik') {
+                        // FIX BUGS: Support format lama biar nggak error
+                        const teksLirik = d.lirik_lengkap || d.lirik_tampil || "Format lirik lama";
+                        teks = `<b>Lirik:</b> <small>${teksLirik.substring(0, 50)}...</small>`;
+                    }
                     else if(gameId === 'estafet_bom') teks = `<b>${d.kategori}</b> (${d.jawaban_benar ? d.jawaban_benar.length : 0} Jawaban)`;
 
                     html += `<div class="list-item"><div class="list-text">${teks}</div>
                              <button class="btn-small" onclick="hapusSoal('${gameId}', '${id}')">Hapus 🗑️</button></div>`;
                 });
                 container.innerHTML = html;
-            } catch (e) { container.innerHTML = "<p style='color:red;'>Gagal memuat daftar soal.</p>"; }
+            } catch (e) { 
+                console.error(e); // Biar gampang ngecek error di console browser
+                container.innerHTML = "<p style='color:red;'>Gagal memuat daftar soal.</p>"; 
+            }
         }
 
         window.hapusSoal = async (gameId, docId) => {

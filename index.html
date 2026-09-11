@@ -117,6 +117,9 @@
         <button class="btn-secondary" onclick="showTutorial('satu_hati')">💞 Satu Hati</button>
         <button class="btn-secondary" onclick="showTutorial('sambung_lirik')">🎤 Sambung Lirik</button>
         <button class="btn-secondary" onclick="showTutorial('estafet_bom')">💣 Estafet Bom</button>
+        
+        <hr style="border-top: 2px dashed #eee; margin: 20px 0;">
+        <button class="btn-danger" style="background-color: #ffb3ba; color: white;" onclick="backToLobby()">🔙 Kembali ke Ruang Tunggu</button>
     </div>
 
     <!-- Halaman 4: Arena Bermain -->
@@ -216,6 +219,10 @@
             if (!confirm("Reset permainan kembali ke ruang tunggu?")) return;
             await updateDoc(doc(db, "rooms", currentRoom), { status: "waiting", party_mode: false, game_state: deleteField() });
         };
+        
+        window.backToLobby = async () => {
+            await updateDoc(doc(db, "rooms", currentRoom), { status: "waiting", party_mode: false });
+        };
 
         function listenToRoom(roomCode) {
             if(unsubscribe) unsubscribe();
@@ -291,7 +298,6 @@
             let firstMode = selectedGameMode;
             
             if (selectedGameMode === 'party') {
-                // Acak urutan game Mode Party
                 let q = ['top_survei', 'satu_hati', 'sambung_lirik', 'estafet_bom'].sort(() => Math.random() - 0.5);
                 roomUpdates.party_mode = true;
                 roomUpdates.party_queue = q;
@@ -302,7 +308,6 @@
                 roomUpdates.party_mode = false;
             }
 
-            // Reset Skor Individu (MVP) Semua Pemain Saat Memulai Mode/Game Baru
             for(let pId in players) { roomUpdates[`players.${pId}.skor_individu`] = 0; }
 
             await updateDoc(doc(db, "rooms", currentRoom), roomUpdates);
@@ -334,7 +339,6 @@
             
             const roomSnap = await getDoc(doc(db, "rooms", currentRoom));
             
-            // Skor Tim direset ke 0 setiap kali pindah Mode Game (Ronde 1)
             let skor_merah = 0; let skor_biru = 0;
             if(rondeNum > 1 && roomSnap.data().game_state) {
                  skor_merah = roomSnap.data().game_state.skor_merah || 0;
@@ -349,7 +353,10 @@
                 gameState.prompt = data.prompt; gameState.jawaban_pemain = {};
                 gameState.waktu_habis = Date.now() + (defDurasi * 1000);
             } else if (mode === 'sambung_lirik') {
-                const words = data.lirik_lengkap.split(/\s+/);
+                // PENGAMAN: Jika admin pakai format soal lama, fallback agar game tidak nge-freeze
+                const lirikMentah = data.lirik_lengkap || data.lirik_tampil || "bisa saja bencana yang datang esok hari";
+                
+                const words = lirikMentah.split(/\s+/);
                 const stopWords = ['di', 'ke', 'dari', 'yang', 'dan', 'atau', 'untuk', 'dengan', 'pada', 'dalam'];
                 let validIndices = [];
                 words.forEach((w, i) => { const c = w.toLowerCase().replace(/[^a-z0-9]/g, ''); if(c.length > 2 && !stopWords.includes(c)) validIndices.push(i); });
@@ -388,7 +395,6 @@
             }
         };
 
-        // Logika Perpindahan Game di Mode Party
         window.nextGame = async () => {
             const roomSnap = await getDoc(doc(db, "rooms", currentRoom));
             const room = roomSnap.data();
@@ -397,7 +403,6 @@
                 const q = room.party_queue;
                 const currIdx = q.indexOf(room.game_state.mode);
                 
-                // Tambahkan skor game yang baru selesai ke akumulasi Party sebelum pindah
                 const newPartyMerah = (room.party_skor_merah || 0) + (room.game_state.skor_merah || 0);
                 const newPartyBiru = (room.party_skor_biru || 0) + (room.game_state.skor_biru || 0);
                 
@@ -409,7 +414,6 @@
                 if (currIdx !== -1 && currIdx < q.length - 1) {
                     await startRound(q[currIdx + 1], 1, []);
                 } else {
-                    // Jika semua game di Party Queue sudah habis
                     await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game", party_mode: false });
                 }
             } else {
@@ -427,7 +431,6 @@
             if(window.bomInterval) clearInterval(window.bomInterval);
             if(window.mainInterval) clearInterval(window.mainInterval);
 
-            // Perhitungan Akumulasi Skor untuk Ditampilkan
             const currentMerah = state.skor_merah || 0;
             const currentBiru = state.skor_biru || 0;
             const prevPartyMerah = data.party_skor_merah || 0;
@@ -448,7 +451,6 @@
                 `;
             }
 
-            // RENDER SCOREBOARD (Hasil Akhir Game)
             if (state.tahap === "scoreboard") {
                 title.innerText = "🏆 Hasi Akhir Game";
                 let winTeam = "SERI"; let winColor = "#888";
@@ -458,7 +460,6 @@
                 if(displayMerah > displayBiru) { winTeam = "MERAH"; winColor = "var(--danger)"; }
                 else if (displayBiru > displayMerah) { winTeam = "BIRU"; winColor = "var(--accent)"; }
 
-                // Urutkan pemain berdasarkan skor individu tertinggi
                 const arrPlayers = Object.entries(data.players).map(([id, p]) => ({ id, ...p }));
                 arrPlayers.sort((a, b) => (b.skor_individu || 0) - (a.skor_individu || 0));
 
@@ -621,7 +622,6 @@
                                 const timMenang = holderTeam === 'merah' ? 'biru' : 'merah';
                                 const fieldSkor = timMenang === 'merah' ? 'game_state.skor_merah' : 'game_state.skor_biru';
                                 
-                                // Tambahkan MVP untuk seluruh tim yang selamat
                                 const musuh = Object.keys(data.players).filter(id => data.players[id].tim === timMenang);
                                 let updates = { "game_state.tahap": "meledak", "game_state.korban": holderName, "game_state.tim_menang": timMenang, [fieldSkor]: state[`skor_${timMenang}`] + 50 };
                                 musuh.forEach(id => updates[`players.${id}.skor_individu`] = (data.players[id].skor_individu || 0) + 50);
