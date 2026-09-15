@@ -17,7 +17,7 @@
         body {
             font-family: 'Fredoka', sans-serif; background: linear-gradient(135deg, var(--bg-color), #e8f7f0);
             color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column;
-            align-items: center; min-height: 100vh; box-sizing: border-box;
+            align-items: center; min-height: 100vh; box-sizing: border-box; touch-action: manipulation;
         }
         .container {
             width: 100%; max-width: 400px; background: white; padding: 25px; border-radius: 24px;
@@ -51,7 +51,7 @@
         .player-item { 
             display: flex; justify-content: space-between; padding: 10px; background: white; 
             margin-bottom: 8px; border-radius: 12px; align-items: center; font-weight: 600;
-            border: 2px solid #ddd;
+            border: 2px solid #ddd; user-select: none;
         }
         
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
@@ -62,27 +62,20 @@
         
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 100; }
         .modal-content { background: white; padding: 30px; border-radius: 20px; width: 85%; max-width: 320px; text-align: center; border: 4px solid var(--primary); }
-
-        #btnFloatingTakeover {
-            display: none; position: fixed; bottom: 20px; right: 20px; background: #2d6a4f; 
-            color: white; border: none; padding: 12px 18px; border-radius: 30px; font-weight: bold; 
-            cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 9999; width: auto;
-        }
     </style>
 </head>
 <body>
 
     <div class="admin-lock" onclick="window.open('admin.html', '_blank')">🔐</div>
-    <button id="btnFloatingTakeover" onclick="takeOverHost()">👑 Ambil Alih Host</button>
 
     <!-- Halaman 1: Landing -->
     <div id="landingScreen" class="container active">
         <h1>🎉 Pesta Pora</h1>
         <p style="color: #888; margin-top:-10px;">Siap-siap heboh bareng teman!</p>
-        <input type="text" id="playerName" placeholder="Nama Kamu (Maks 10)" maxlength="10">
+        <input type="text" id="playerName" placeholder="Nama Kamu (Maks 10)" maxlength="10" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         <button onclick="createRoom()">Buat Room Baru</button>
         <hr style="border-top: 2px dashed #eee; margin: 25px 0;">
-        <input type="number" id="roomCodeInput" placeholder="Kode Room (4 Digit)">
+        <input type="number" id="roomCodeInput" placeholder="Kode Room (4 Digit)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         <button class="btn-secondary" onclick="joinRoom()">Gabung Room</button>
     </div>
 
@@ -115,7 +108,10 @@
         </div>
 
         <hr style="border-top: 2px dashed #eee; margin: 20px 0;">
-        <button class="btn-danger" onclick="leaveRoom()">🚪 Keluar Room</button>
+        <div style="display:flex; gap:8px;">
+            <button class="btn-danger" style="flex:1; margin:0;" onclick="leaveRoom()">🚪 Keluar</button>
+            <button id="btnTakeoverLobby" class="btn-secondary" style="flex:1; margin:0; display:none; background:#ff9f43; color:white; box-shadow:0 6px 0px #cc823a;" onclick="takeOverHost()">👑 Ambil Host</button>
+        </div>
     </div>
 
     <!-- Halaman 3: Pemilihan Game -->
@@ -127,7 +123,7 @@
         <button class="btn-secondary" onclick="showTutorial('sambung_lirik')">🎤 Sambung Lirik</button>
         <button class="btn-secondary" onclick="showTutorial('estafet_bom')">💣 Estafet Bom</button>
         
-        <hr style="border-top: 2px dashed #eee; margin: 20px 0;">
+        <hr style="border-top: 2px dashed #eee; margin: 25px 0;">
         <button class="btn-danger" style="background-color: #ffb3ba; color: white;" onclick="backToLobby()">🔙 Kembali ke Ruang Tunggu</button>
     </div>
 
@@ -174,12 +170,11 @@
         window.mainInterval = null;
         window.cdInterval = null;
         
-        // Trackers for SFX & UI
         window.prevTerjawab = 0;
         window.prevStateTahap = "";
         window.hostIdData = "";
 
-        // GENERATOR SFX TANPA FILE EKSTERNAL (Web Audio API)
+        // SFX GENERATOR
         window.playSound = (type) => {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -205,6 +200,32 @@
                 }
             } catch(e) {}
         };
+
+        // TYPO TOLERANCE (LEVENSHTEIN DISTANCE)
+        function getLevenshteinDistance(a, b) {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            let matrix = [];
+            for (let i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+            for (let j = 0; j <= a.length; j++) { matrix[0][j] = j; }
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i-1) === a.charAt(j-1)) {
+                        matrix[i][j] = matrix[i-1][j-1];
+                    } else {
+                        matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1));
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        function isTypoAllowed(input, target) {
+            if (input === target) return true;
+            if (target.length <= 3) return input === target;
+            let maxDist = target.length <= 6 ? 1 : 2;
+            return getLevenshteinDistance(input, target) <= maxDist;
+        }
 
         window.onload = async () => {
             if (currentRoom && myName) {
@@ -260,13 +281,11 @@
             await updateDoc(doc(db, "rooms", currentRoom), { status: "waiting", party_mode: false, game_state: deleteField() });
         };
         
-        // FUNGSI PAKSA SELESAI RONDE OLEH HOST
         window.forceFinishRound = async () => {
             if(!confirm("Yakin ingin langsung mengakhiri ronde ini?")) return;
             const roomRef = doc(db, "rooms", currentRoom);
             const snap = await getDoc(roomRef);
             const state = snap.data().game_state;
-            
             if (state.mode === 'top_survei') {
                 await updateDoc(roomRef, { "game_state.tahap": "hasil" });
             } else if (state.mode === 'sambung_lirik') {
@@ -276,14 +295,37 @@
 
         window.backToLobby = async () => { await updateDoc(doc(db, "rooms", currentRoom), { status: "waiting", party_mode: false }); };
 
-        // DRAG AND DROP LOBBY
+        // MOBILE TOUCH-FRIENDLY DRAG & DROP SUPPORT
         window.allowDrop = (ev) => ev.preventDefault();
         window.drag = (ev, id) => ev.dataTransfer.setData("id", id);
         window.drop = async (ev, team) => {
             ev.preventDefault();
             const id = ev.dataTransfer.getData("id");
             if (isHost && id) await updateDoc(doc(db, "rooms", currentRoom), { [`players.${id}.tim`]: team });
+        };
+
+        function setupTouchDragAndDrop() {
+            let draggedId = null;
+            document.addEventListener("touchstart", (e) => {
+                const item = e.target.closest(".player-item");
+                if (item && isHost) {
+                    draggedId = item.getAttribute("data-player-id");
+                }
+            }, {passive: true});
+
+            document.addEventListener("touchend", async (e) => {
+                if (!draggedId || !isHost) return;
+                const touch = e.changedTouches[0];
+                const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+                const zone = targetElement ? targetElement.closest("#zone-merah, #zone-biru") : null;
+                if (zone) {
+                    const targetTeam = zone.id === "zone-merah" ? "merah" : "biru";
+                    await updateDoc(doc(db, "rooms", currentRoom), { [`players.${draggedId}.tim`]: targetTeam });
+                }
+                draggedId = null;
+            }, {passive: true});
         }
+        setupTouchDragAndDrop();
 
         function listenToRoom(roomCode) {
             if(unsubscribe) unsubscribe();
@@ -300,8 +342,8 @@
                 
                 document.getElementById('hostControls').style.display = isHost ? 'block' : 'none';
                 document.getElementById('playerControls').style.display = !isHost ? 'block' : 'none';
-                document.getElementById('drag-hint').innerText = isHost ? "💡 Host bisa geser (drag & drop) nama pemain untuk memindahkan tim." : "Menunggu Host membagi tim...";
-                document.getElementById('btnFloatingTakeover').style.display = (!isHost && currentRoom && data.status !== 'waiting') ? 'block' : 'none';
+                document.getElementById('btnTakeoverLobby').style.display = !isHost ? 'block' : 'none';
+                document.getElementById('drag-hint').innerText = isHost ? "💡 Host bisa geser (drag/sentuh) nama pemain untuk memindahkan tim." : "Menunggu Host membagi tim...";
 
                 if(data.status === "waiting") showScreen('lobbyScreen');
                 else if(data.status === "selecting_game") { if (isHost) showScreen('gameSelectionScreen'); else showScreen('lobbyScreen'); }
@@ -323,10 +365,8 @@
             for (const [id, pData] of Object.entries(players)) {
                 const isMe = id === myId ? " (Kamu)" : ""; 
                 const hostStar = id === window.hostIdData ? " 👑" : ""; 
-                const dragAttr = isHost ? `draggable="true" ondragstart="drag(event, '${id}')" style="cursor:grab;"` : '';
-                
+                const dragAttr = isHost ? `draggable="true" ondragstart="drag(event, '${id}')" data-player-id="${id}" style="cursor:grab;"` : '';
                 let actionBtn = isHost && id !== myId ? `<button class="btn-danger" style="width:30px; height:30px; padding:0; border-radius:8px; font-size:12px; box-shadow:none;" onclick="kickPlayer('${id}')">❌</button>` : '';
-                
                 let html = `<div class="player-item" ${dragAttr}><span>${pData.nama}${isMe}${hostStar}</span><div>${actionBtn}</div></div>`;
                 
                 if (pData.tim === "merah") listMerah.innerHTML += html;
@@ -382,6 +422,7 @@
             const qSnap = await getDocs(collection(db, `bank_soal/${mode}/soal`));
             if(qSnap.empty) { alert(`Bank soal ${mode} kosong!`); if (isHost) goToGameSelection(); return; }
             
+            // PRIORITAS SOAL YANG BELUM MUNCUL DI ROOM INI
             let availableDocs = qSnap.docs.filter(d => !soalTerpakai.includes(d.id));
             if(availableDocs.length === 0) { availableDocs = qSnap.docs; soalTerpakai = []; }
             const randomDoc = availableDocs[Math.floor(Math.random() * availableDocs.length)];
@@ -399,7 +440,10 @@
             gameState.skor_merah = skor_merah; gameState.skor_biru = skor_biru;
 
             if (mode === 'top_survei') {
-                gameState.pertanyaan = data.pertanyaan; gameState.jawaban = data.jawaban; gameState.terjawab = [];
+                // Batasi maksimal 10 jawaban
+                let jwbList = data.jawaban || [];
+                if (jwbList.length > 10) jwbList = jwbList.slice(0, 10);
+                gameState.pertanyaan = data.pertanyaan; gameState.jawaban = jwbList; gameState.terjawab = [];
             } else if (mode === 'satu_hati') {
                 gameState.prompt = data.prompt; gameState.jawaban_pemain = {};
             } else if (mode === 'sambung_lirik') {
@@ -503,7 +547,7 @@
 
             if (state.tahap === "scoreboard") {
                 title.innerText = "🏆 Hasil Akhir Game";
-                let winTeam = "SERI"; let winColor = "#888"; let headingText = "KEDUDUKAN SERI!";
+                let winTeam = "SERI"; let winColor = "#888"; let headingText = "SERI";
                 let dMerah = isParty ? totalPartyMerah : currentMerah; let dBiru = isParty ? totalPartyBiru : currentBiru;
 
                 if(dMerah > dBiru) { winTeam = "MERAH"; winColor = "var(--danger)"; headingText = "TIM MERAH MEMIMPIN!"; }
@@ -518,18 +562,18 @@
 
                 let btnSelesai = isHost ? (isParty ? (data.party_queue.indexOf(state.mode) === data.party_queue.length - 1 ? `<button onclick="nextGame()">🎉 Selesai Mode Party!</button>` : `<button onclick="nextGame()">Lanjut Game Berikutnya 🚀</button>`) : `<button onclick="nextGame()">Selesai (Kembali ke Menu)</button>`) : '';
 
-                arena.innerHTML = `<h1 style="font-size:60px; margin:0;">👑</h1><h2 style="color:${winColor}; margin-top:0;">${headingText}</h2><p style="color:#888; margin-bottom:20px;">Menampilkan ${isParty ? 'Total Skor Party' : 'Skor Akhir'}</p><div style="display:flex; justify-content:space-between; margin:30px 0; gap:10px;"><div style="flex:1; background:#ffe5e7; padding:15px; border-radius:15px; border:3px solid var(--danger);"><h3 style="margin:0 0 10px 0; color:var(--danger);">Tim Merah</h3><h2 style="margin:0 0 15px 0; color:var(--danger);">${dMerah} Poin</h2><hr style="border-top:1px solid var(--danger);">${pMerah}</div><div style="flex:1; background:#e5f3ff; padding:15px; border-radius:15px; border:3px solid var(--accent);"><h3 style="margin:0 0 10px 0; color:var(--accent);">Tim Biru</h3><h2 style="margin:0 0 15px 0; color:var(--accent);">${dBiru} Poin</h2><hr style="border-top:1px solid var(--accent);">${pBiru}</div></div>${btnSelesai}`;
+                let btnTakeoverScore = !isHost ? `<button class="btn-secondary" style="background:#ff9f43; color:white; box-shadow:0 6px 0px #cc823a; margin-top:10px;" onclick="takeOverHost()">👑 Ambil Alih Host</button>` : '';
+
+                arena.innerHTML = `<h1 style="font-size:60px; margin:0;">👑</h1><h2 style="color:${winColor}; margin-top:0;">${headingText}</h2><p style="color:#888; margin-bottom:20px;">Menampilkan ${isParty ? 'Total Skor Party' : 'Skor Akhir'}</p><div style="display:flex; justify-content:space-between; margin:30px 0; gap:10px;"><div style="flex:1; background:#ffe5e7; padding:15px; border-radius:15px; border:3px solid var(--danger);"><h3 style="margin:0 0 10px 0; color:var(--danger);">Tim Merah</h3><h2 style="margin:0 0 15px 0; color:var(--danger);">${dMerah} Poin</h2><hr style="border-top:1px solid var(--danger);">${pMerah}</div><div style="flex:1; background:#e5f3ff; padding:15px; border-radius:15px; border:3px solid var(--accent);"><h3 style="margin:0 0 10px 0; color:var(--accent);">Tim Biru</h3><h2 style="margin:0 0 15px 0; color:var(--accent);">${dBiru} Poin</h2><hr style="border-top:1px solid var(--accent);">${pBiru}</div></div>${btnSelesai}${btnTakeoverScore}`;
                 return;
             }
 
-            // PENGINGAT TIM UNTUK PEMAIN
             const myTeam = data.players[myId] ? data.players[myId].tim : 'merah';
             const myTeamColor = myTeam === 'merah' ? 'var(--danger)' : 'var(--accent)';
             const myTeamName = myTeam === 'merah' ? '🔴 TIM MERAH' : '🔵 TIM BIRU';
             const teamReminder = `<div style="background: ${myTeamColor}; color: white; padding: 6px 15px; border-radius: 20px; display: inline-block; margin-bottom: 15px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 0px rgba(0,0,0,0.2);">Kamu bermain sebagai ${myTeamName}</div>`;
 
-            // HIGHLIGHT KARTU PERTANYAAN
-            const highlightCard = (label, text) => `<div style="background: white; border: 4px solid var(--primary); padding: 20px; border-radius: 16px; font-size: 24px; color: #2d6a4f; box-shadow: 0 8px 15px rgba(168, 230, 207, 0.4); margin-bottom: 25px; line-height: 1.4; font-weight: 700;"><div style="font-size:14px; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">${label}</div>${text}</div>`;
+            const highlightCard = (label, text) => `<div style="background: white; border: 4px solid var(--primary); padding: 20px; border-radius: 16px; font-size: 22px; color: #2d6a4f; box-shadow: 0 8px 15px rgba(168, 230, 207, 0.4); margin-bottom: 20px; line-height: 1.4; font-weight: 700;"><div style="font-size:13px; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">${label}</div>${text}</div>`;
 
             const hostBtn = isHost ? `<hr style="border-top: 2px dashed #eee; margin: 25px 0;"><button class="btn-danger" style="background-color:#ffb3ba; color:white; margin-bottom:5px;" onclick="resetRoom()">🔄 Berhenti & Ke Ruang Tunggu</button>` : '';
             const hostForceBtn = isHost && state.tahap === "ngetik" ? `<button class="btn-danger" style="background:#ff9f43; color:white; margin-bottom:5px; box-shadow: 0 6px 0px #cc823a;" onclick="forceFinishRound()">⏭️ Paksa Selesai Ronde</button>` : '';
@@ -537,7 +581,7 @@
 
             let commonTimerHTML = '';
             if(state.tahap === 'ngetik' && state.mode !== 'estafet_bom' && state.waktu_habis) {
-                commonTimerHTML = `<div style="text-align:center; font-size:32px; font-weight:bold; color:var(--danger); margin-bottom:15px; border:3px solid var(--danger); border-radius:15px; padding:5px;">⏱ <span id="mainTimer">--</span></div>`;
+                commonTimerHTML = `<div style="text-align:center; font-size:28px; font-weight:bold; color:var(--danger); margin-bottom:15px; border:3px solid var(--danger); border-radius:15px; padding:5px;">⏱ <span id="mainTimer">--</span></div>`;
                 window.mainInterval = setInterval(() => {
                     const sisa = Math.max(0, state.waktu_habis - Date.now());
                     const el = document.getElementById('mainTimer'); if(el) el.innerText = Math.ceil(sisa / 1000) + "s";
@@ -556,53 +600,57 @@
 
             if (state.mode === 'top_survei') {
                 title.innerText = `Top Survei 📊 (Ronde ${state.ronde_sekarang}/${state.max_ronde})`;
-                let listJawaban = '';
+                let listItemsHTML = '';
                 state.jawaban.forEach((j, index) => {
-                    if (state.terjawab.find(t => t.teks === j.teks)) { listJawaban += `<div style="background:var(--secondary); padding:15px; margin:8px 0; border-radius:12px; display:flex; justify-content:space-between; font-weight:bold; color:#333; border:2px solid #86c4ad;"><span>${index + 1}. ${j.teks.toUpperCase()}</span> <span>${j.poin}</span></div>`; } 
-                    else {
-                        if (state.tahap === "hasil") listJawaban += `<div style="background:#ffe5e7; padding:15px; margin:8px 0; border-radius:12px; display:flex; justify-content:space-between; font-weight:bold; color:var(--danger); border:2px solid #ffb3ba;"><span>${index + 1}. ${j.teks.toUpperCase()}</span> <span>${j.poin}</span></div>`;
-                        else listJawaban += `<div style="background:#eee; padding:15px; margin:8px 0; border-radius:12px; display:flex; justify-content:center; color:#bbb; border:2px dashed #ccc; font-weight:bold;"><span>--- ${index + 1} ---</span></div>`;
+                    if (state.terjawab.find(t => t.teks === j.teks)) { 
+                        listItemsHTML += `<div style="background:var(--secondary); padding:10px; border-radius:10px; display:flex; justify-content:space-between; font-weight:bold; color:#333; border:2px solid #86c4ad; font-size:14px;"><span>${index + 1}. ${j.teks.toUpperCase()}</span> <span>${j.poin}</span></div>`; 
+                    } else {
+                        if (state.tahap === "hasil") listItemsHTML += `<div style="background:#ffe5e7; padding:10px; border-radius:10px; display:flex; justify-content:space-between; font-weight:bold; color:var(--danger); border:2px solid #ffb3ba; font-size:14px;"><span>${index + 1}. ${j.teks.toUpperCase()}</span> <span>${j.poin}</span></div>`;
+                        else listItemsHTML += `<div style="background:#eee; padding:10px; border-radius:10px; display:flex; justify-content:center; color:#bbb; border:2px dashed #ccc; font-weight:bold; font-size:14px;"><span>--- ${index + 1} ---</span></div>`;
                     }
                 });
                 
-                htmlArena = `${teamReminder}${partySkorHTML}${highlightCard("Pertanyaan Top Survei", state.pertanyaan)}<div style="display:flex; justify-content:space-between; margin-bottom:20px; font-weight:bold; font-size:18px;"><span style="color:white; background:var(--danger); padding:5px 15px; border-radius:10px;">Skor Game Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:5px 15px; border-radius:10px;">Skor Game Biru: ${state.skor_biru}</span></div>${commonTimerHTML}${listJawaban}`;
+                // Layout 2 Kolom untuk Top Survei agar kompak di mobile
+                let listJawabanGrid = `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:15px;">${listItemsHTML}</div>`;
+                
+                htmlArena = `${teamReminder}${partySkorHTML}${highlightCard("Pertanyaan Top Survei", state.pertanyaan)}<div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold; font-size:16px;"><span style="color:white; background:var(--danger); padding:4px 10px; border-radius:8px;">Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:4px 10px; border-radius:8px;">Biru: ${state.skor_biru}</span></div>${commonTimerHTML}${listJawabanGrid}`;
                 
                 if (state.tahap === "ngetik") {
-                    htmlArena += `<hr style="border-top: 2px dashed #eee; margin: 25px 0;"><input type="text" id="jawabanInput" placeholder="Ketik jawabanmu..." onkeypress="if(event.key === 'Enter') submitJawaban()"><button onclick="submitJawaban()">Kirim Jawaban</button><hr style="border-top: 2px dashed #eee; margin: 25px 0;">${hostForceBtn}${hostBtn}`;
+                    htmlArena += `<hr style="border-top: 2px dashed #eee; margin: 15px 0;"><input type="text" id="jawabanInput" placeholder="Ketik jawabanmu..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onkeypress="if(event.key === 'Enter') submitJawaban()"><button onclick="submitJawaban()">Kirim Jawaban</button><hr style="border-top: 2px dashed #eee; margin: 20px 0;">${hostForceBtn}${hostBtn}`;
                     if(isHost && state.terjawab.length === state.jawaban.length) updateDoc(doc(db, "rooms", currentRoom), { "game_state.tahap": "hasil" });
                 } else { htmlArena += `${hostNextBtn}${hostBtn}`; }
             } 
             else if (state.mode === 'satu_hati') {
                 title.innerText = `Satu Hati 💞 (Ronde ${state.ronde_sekarang}/${state.max_ronde})`;
                 if (state.tahap === "ngetik") {
-                    let statusPemain = '<div style="margin:20px 0; text-align:left; background:#fff; padding:15px; border-radius:15px; border:2px solid #eee;">';
+                    let statusPemain = '<div style="margin:15px 0; text-align:left; background:#fff; padding:12px; border-radius:12px; border:2px solid #eee; font-size:14px;">';
                     for (const [pId, pData] of Object.entries(data.players)) {
                         const udhJawab = state.jawaban_pemain[pId] ? '✅ Kunci' : '⏳ Ngetik';
-                        statusPemain += `<div style="color:${pData.tim === 'merah' ? 'var(--danger)' : 'var(--accent)'}; font-weight:bold; margin:5px 0;">${pData.nama}: ${udhJawab}</div>`;
+                        statusPemain += `<div style="color:${pData.tim === 'merah' ? 'var(--danger)' : 'var(--accent)'}; font-weight:bold; margin:4px 0;">${pData.nama}: ${udhJawab}</div>`;
                     }
                     statusPemain += '</div>';
-                    let inputHTML = state.jawaban_pemain[myId] ? `<div style="background:var(--secondary); padding:15px; border-radius:12px; font-weight:bold; color:#333; margin-top:20px;">Jawaban: ${state.jawaban_pemain[myId].toUpperCase()} 🔒</div>` : `<input type="text" id="jawabanSH" placeholder="Satu kata penentu..." onkeypress="if(event.key === 'Enter') submitSH()"><button onclick="submitSH()">Kunci Jawaban</button>`;
+                    let inputHTML = state.jawaban_pemain[myId] ? `<div style="background:var(--secondary); padding:15px; border-radius:12px; font-weight:bold; color:#333; margin-top:15px;">Jawaban: ${state.jawaban_pemain[myId].toUpperCase()} 🔒</div>` : `<input type="text" id="jawabanSH" placeholder="Satu kata penentu..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onkeypress="if(event.key === 'Enter') submitSH()"><button onclick="submitSH()">Kunci Jawaban</button>`;
                     htmlArena = `${teamReminder}${partySkorHTML}${commonTimerHTML}${highlightCard("Kategori Satu Hati", state.prompt)}${statusPemain}${inputHTML}${isHost ? `<hr><button class="btn-danger" style="background:#ffb3ba; color:#fff;" onclick="cekHasilSH()">Paksa Buka Jawaban</button>` : ''}${hostBtn}`;
                 } 
                 else if (state.tahap === "hasil") {
-                    let hasilHTML = '<div style="margin:20px 0; text-align:left; background:#fff; padding:15px; border-radius:15px; border:2px solid #eee;">';
+                    let hasilHTML = '<div style="margin:15px 0; text-align:left; background:#fff; padding:12px; border-radius:12px; border:2px solid #eee; font-size:14px;">';
                     for (const [pId, pData] of Object.entries(data.players)) {
-                        hasilHTML += `<div style="color:${pData.tim === 'merah' ? 'var(--danger)' : 'var(--accent)'}; font-weight:bold; margin-bottom:8px;">${pData.nama}: <span style="color:#333; background:#f0f0f0; padding:2px 8px; border-radius:5px;">${(state.jawaban_pemain[pId] || 'Tidak Jawab ❌').toUpperCase()}</span></div>`;
+                        hasilHTML += `<div style="color:${pData.tim === 'merah' ? 'var(--danger)' : 'var(--accent)'}; font-weight:bold; margin-bottom:6px;">${pData.nama}: <span style="color:#333; background:#f0f0f0; padding:2px 8px; border-radius:5px;">${(state.jawaban_pemain[pId] || 'Tidak Jawab ❌').toUpperCase()}</span></div>`;
                     }
                     hasilHTML += '</div>';
-                    htmlArena = `${teamReminder}${partySkorHTML}${highlightCard("Kategori Satu Hati", state.prompt)}<div style="display:flex; justify-content:space-between; margin-bottom:20px; font-weight:bold; font-size:18px;"><span style="color:white; background:var(--danger); padding:5px 15px; border-radius:10px;">Skor Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:5px 15px; border-radius:10px;">Skor Biru: ${state.skor_biru}</span></div>${hasilHTML}${hostNextBtn}${hostBtn}`;
+                    htmlArena = `${teamReminder}${partySkorHTML}${highlightCard("Kategori Satu Hati", state.prompt)}<div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold; font-size:16px;"><span style="color:white; background:var(--danger); padding:4px 10px; border-radius:8px;">Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:4px 10px; border-radius:8px;">Biru: ${state.skor_biru}</span></div>${hasilHTML}${hostNextBtn}${hostBtn}`;
                 }
             }
             else if (state.mode === 'sambung_lirik') {
                 title.innerText = `Sambung Lirik 🎤 (Ronde ${state.ronde_sekarang}/${state.max_ronde})`;
                 if (state.tahap === "ngetik") {
-                    htmlArena = `${teamReminder}${partySkorHTML}${commonTimerHTML}<h3 style="color:#555; line-height:1.5;">"${state.lirik_tampil}"</h3><hr style="border-top: 2px dashed #eee; margin: 25px 0;"><input type="text" id="jawabanSL" placeholder="Tebak kata..." onkeypress="if(event.key === 'Enter') submitSL()"><button onclick="submitSL()">Kirim Cepat!</button><hr style="border-top: 2px dashed #eee; margin: 25px 0;">${hostForceBtn}${hostBtn}`;
+                    htmlArena = `${teamReminder}${partySkorHTML}${commonTimerHTML}<div style="background: white; border: 4px solid var(--primary); padding: 20px; border-radius: 16px; font-size: 20px; color: #2d6a4f; box-shadow: 0 8px 15px rgba(168, 230, 207, 0.4); margin-bottom: 20px; line-height: 1.5; font-weight: 700;">"${state.lirik_tampil}"</div><hr style="border-top: 2px dashed #eee; margin: 20px 0;"><input type="text" id="jawabanSL" placeholder="Tebak kata..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onkeypress="if(event.key === 'Enter') submitSL()"><button onclick="submitSL()">Kirim Cepat!</button><hr style="border-top: 2px dashed #eee; margin: 20px 0;">${hostForceBtn}${hostBtn}`;
                 } 
                 else if (state.tahap === "hasil") {
                     const w = state.tim_pemenang === 'merah' ? 'var(--danger)' : (state.tim_pemenang === 'biru' ? 'var(--accent)' : '#ccc');
                     const teksBongkar = state.lirik_tampil.replace('_________', `<span style="color:${w}; text-decoration:underline;">${state.jawaban_benar.toUpperCase()}</span>`);
                     const infoPemenang = state.tim_pemenang !== 'none' ? `<h2 style="margin:0; color:${w};">🎉 ${state.pemenang_ronde} Menang!</h2><p style="margin:5px 0 0 0; color:#555; font-weight:bold;">Tim ${state.tim_pemenang.toUpperCase()} dapat +50 Poin</p>` : `<h2 style="margin:0; color:#888;">Ronde Dihentikan/Waktu Habis!</h2>`;
-                    htmlArena = `${teamReminder}${partySkorHTML}<h3 style="color:#555; line-height:1.5;">"${teksBongkar}"</h3><div style="background:#fff; padding:20px; border-radius:15px; border:3px solid ${w}; margin: 20px 0;">${infoPemenang}</div><div style="display:flex; justify-content:space-between; margin-bottom:20px; font-weight:bold; font-size:18px;"><span style="color:white; background:var(--danger); padding:5px 15px; border-radius:10px;">Skor Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:5px 15px; border-radius:10px;">Skor Biru: ${state.skor_biru}</span></div>${hostNextBtn}${hostBtn}`;
+                    htmlArena = `${teamReminder}${partySkorHTML}<div style="background: white; border: 4px solid var(--primary); padding: 20px; border-radius: 16px; font-size: 20px; color: #2d6a4f; margin-bottom: 20px; line-height: 1.5; font-weight: 700;">"${teksBongkar}"</div><div style="background:#fff; padding:15px; border-radius:15px; border:3px solid ${w}; margin: 15px 0;">${infoPemenang}</div><div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold; font-size:16px;"><span style="color:white; background:var(--danger); padding:4px 10px; border-radius:8px;">Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:4px 10px; border-radius:8px;">Biru: ${state.skor_biru}</span></div>${hostNextBtn}${hostBtn}`;
                 }
             }
             else if (state.mode === 'estafet_bom') {
@@ -611,9 +659,9 @@
                     const isMyTurn = state.bom_holder === myId;
                     const hTeam = data.players[state.bom_holder] ? data.players[state.bom_holder].tim : "merah";
                     const w = hTeam === 'merah' ? 'var(--danger)' : 'var(--accent)';
-                    let inputHTML = isMyTurn ? `<hr style="border-top: 2px dashed #eee; margin: 20px 0;"><input type="text" id="jawabanEB" placeholder="Ketik kata valid!" onkeypress="if(event.key === 'Enter') submitEB()"><button class="btn-danger" style="background:var(--danger); color:white;" onclick="submitEB()">Lempar Bom! 💣</button>` : `<hr style="border-top: 2px dashed #eee; margin: 20px 0;"><h3 style="color:#888;">Menunggu ${(data.players[state.bom_holder] ? data.players[state.bom_holder].nama : "Seseorang")} menjawab...</h3>`;
+                    let inputHTML = isMyTurn ? `<hr style="border-top: 2px dashed #eee; margin: 15px 0;"><input type="text" id="jawabanEB" placeholder="Ketik kata valid!" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onkeypress="if(event.key === 'Enter') submitEB()"><button class="btn-danger" style="background:var(--danger); color:white;" onclick="submitEB()">Lempar Bom! 💣</button>` : `<hr style="border-top: 2px dashed #eee; margin: 15px 0;"><h3 style="color:#888; font-size:16px;">Menunggu ${(data.players[state.bom_holder] ? data.players[state.bom_holder].nama : "Seseorang")} menjawab...</h3>`;
                     
-                    htmlArena = `${teamReminder}${partySkorHTML}${highlightCard("Kategori Estafet Bom", state.kategori)}<div style="background:#fff; padding:20px; border-radius:15px; border:4px solid ${w}; margin: 20px 0; transition: 0.2s;"><h3 style="margin:0; color:${w};">Bom di tangan: ${(data.players[state.bom_holder] ? data.players[state.bom_holder].nama : "Seseorang").toUpperCase()}!</h3><h1 id="bomTimer" style="font-size:48px; margin:10px 0; color:var(--danger);">--</h1></div>${inputHTML}${state.terjawab.length > 0 ? `<div style="font-size:14px; color:#666; margin-top:15px; word-wrap: break-word;">Sudah dijawab: ${state.terjawab.join(', ')}</div>` : ''}${hostBtn}`;
+                    htmlArena = `${teamReminder}${partySkorHTML}${highlightCard("Kategori Estafet Bom", state.kategori)}<div style="background:#fff; padding:15px; border-radius:15px; border:4px solid ${w}; margin: 15px 0;"><h3 style="margin:0; color:${w}; font-size:18px;">Bom di tangan: ${(data.players[state.bom_holder] ? data.players[state.bom_holder].nama : "Seseorang").toUpperCase()}!</h3><h1 id="bomTimer" style="font-size:42px; margin:8px 0; color:var(--danger);">--</h1></div>${inputHTML}${state.terjawab.length > 0 ? `<div style="font-size:13px; color:#666; margin-top:10px; word-wrap: break-word;">Sudah dijawab: ${state.terjawab.join(', ')}</div>` : ''}${hostBtn}`;
 
                     window.mainInterval = setInterval(() => {
                         const sisa = Math.max(0, state.waktu_habis - Date.now());
@@ -632,7 +680,7 @@
                 }
                 else if (state.tahap === "meledak") {
                     const w = state.tim_menang === 'merah' ? 'var(--danger)' : 'var(--accent)';
-                    htmlArena = `${teamReminder}${partySkorHTML}<h1 style="font-size:60px; margin:0;">💥</h1><h2 style="color:var(--danger); margin-top:0;">BOM MELEDAK!</h2><p style="font-weight:bold; font-size:18px;">${state.korban} gagal menjawab tepat waktu.</p><div style="background:#fff; padding:15px; border-radius:15px; border:3px solid ${w}; margin: 20px 0;"><h3 style="margin:0; color:${w};">Tim ${state.tim_menang.toUpperCase()} +50 Poin!</h3></div><div style="display:flex; justify-content:space-between; margin-bottom:20px; font-weight:bold; font-size:18px;"><span style="color:white; background:var(--danger); padding:5px 15px; border-radius:10px;">Skor Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:5px 15px; border-radius:10px;">Skor Biru: ${state.skor_biru}</span></div>${hostNextBtn}${hostBtn}`;
+                    htmlArena = `${teamReminder}${partySkorHTML}<h1 style="font-size:50px; margin:0;">💥</h1><h2 style="color:var(--danger); margin-top:0;">BOM MELEDAK!</h2><p style="font-weight:bold; font-size:16px;">${state.korban} gagal menjawab tepat waktu.</p><div style="background:#fff; padding:15px; border-radius:15px; border:3px solid ${w}; margin: 15px 0;"><h3 style="margin:0; color:${w}; font-size:18px;">Tim ${state.tim_menang.toUpperCase()} +50 Poin!</h3></div><div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold; font-size:16px;"><span style="color:white; background:var(--danger); padding:4px 10px; border-radius:8px;">Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:4px 10px; border-radius:8px;">Biru: ${state.skor_biru}</span></div>${hostNextBtn}${hostBtn}`;
                 }
             }
 
@@ -647,25 +695,33 @@
             }
         }
 
+        // SUBMIT DENGAN TYPO TOLERANCE
         window.submitJawaban = async () => {
             const inputEl = document.getElementById('jawabanInput');
-            const tebakan = inputEl.value.trim().toLowerCase();
-            if(!tebakan) return;
+            const rawInput = inputEl.value.trim().toLowerCase();
+            if(!rawInput) return;
             const roomRef = doc(db, "rooms", currentRoom);
             const roomSnap = await getDoc(roomRef);
             const state = roomSnap.data().game_state;
             if(state.tahap !== "ngetik") return;
 
-            const match = state.jawaban.find(j => j.teks === tebakan);
-            const alreadyAns = state.terjawab.find(t => t.teks === tebakan);
+            let matchedEntry = null;
+            for (const j of state.jawaban) {
+                if (isTypoAllowed(rawInput, j.teks)) {
+                    matchedEntry = j;
+                    break;
+                }
+            }
 
-            if (match && !alreadyAns) {
+            const alreadyAns = matchedEntry ? state.terjawab.find(t => t.teks === matchedEntry.teks) : null;
+
+            if (matchedEntry && !alreadyAns) {
                 inputEl.value = '';
                 const myTeam = roomSnap.data().players[myId].tim;
                 await updateDoc(roomRef, { 
-                    "game_state.terjawab": arrayUnion(match), 
-                    [`game_state.skor_${myTeam}`]: increment(match.poin),
-                    [`players.${myId}.skor_individu`]: increment(match.poin)
+                    "game_state.terjawab": arrayUnion(matchedEntry), 
+                    [`game_state.skor_${myTeam}`]: increment(matchedEntry.poin),
+                    [`players.${myId}.skor_individu`]: increment(matchedEntry.poin)
                 });
             } else {
                 window.playSound('salah');
@@ -701,14 +757,14 @@
         window.submitSL = async () => {
             const inputEl = document.getElementById('jawabanSL');
             if(!inputEl) return;
-            const tebakan = inputEl.value.trim().toLowerCase();
-            if(!tebakan) return;
+            const rawInput = inputEl.value.trim().toLowerCase();
+            if(!rawInput) return;
             const roomRef = doc(db, "rooms", currentRoom);
             const snap = await getDoc(roomRef);
             const data = snap.data(); const state = data.game_state;
             if (state.tahap !== "ngetik") return; 
 
-            if (tebakan === state.jawaban_benar) {
+            if (isTypoAllowed(rawInput, state.jawaban_benar)) {
                 inputEl.value = '';
                 const myTeam = data.players[myId].tim;
                 await updateDoc(roomRef, { 
@@ -726,14 +782,24 @@
         window.submitEB = async () => {
             const inputEl = document.getElementById('jawabanEB');
             if(!inputEl) return;
-            const tebakan = inputEl.value.trim().toLowerCase();
-            if(!tebakan) return;
+            const rawInput = inputEl.value.trim().toLowerCase();
+            if(!rawInput) return;
             const roomRef = doc(db, "rooms", currentRoom);
             const snap = await getDoc(roomRef);
             const data = snap.data(); const state = data.game_state;
             if (state.tahap !== "ngetik" || state.bom_holder !== myId) return;
 
-            if ((state.jawaban_benar && state.jawaban_benar.length > 0 && !state.jawaban_benar.includes(tebakan)) || state.terjawab.includes(tebakan)) {
+            let isValidAnswer = false;
+            if (state.jawaban_benar && state.jawaban_benar.length > 0) {
+                for (const ans of state.jawaban_benar) {
+                    if (isTypoAllowed(rawInput, ans)) {
+                        isValidAnswer = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!isValidAnswer || state.terjawab.includes(rawInput)) {
                 window.playSound('salah');
                 inputEl.value = '❌ Salah/Terpakai!'; inputEl.style.backgroundColor = '#ffcccb';
                 setTimeout(() => { inputEl.value = ''; inputEl.style.backgroundColor = '#fff'; }, 800);
@@ -751,7 +817,7 @@
             const targetLempar = availableMusuh.length > 0 ? availableMusuh[Math.floor(Math.random() * availableMusuh.length)] : myId;
             history.push(targetLempar);
 
-            await updateDoc(roomRef, { "game_state.bom_holder": targetLempar, "game_state.terjawab": arrayUnion(tebakan), [`game_state.${historyField}`]: history, "game_state.waktu_habis": Date.now() + (state.max_durasi * 1000) });
+            await updateDoc(roomRef, { "game_state.bom_holder": targetLempar, "game_state.terjawab": arrayUnion(rawInput), [`game_state.${historyField}`]: history, "game_state.waktu_habis": Date.now() + (state.max_durasi * 1000) });
         };
 
         function showScreen(screenId) {
