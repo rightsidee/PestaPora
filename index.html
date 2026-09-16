@@ -85,7 +85,6 @@
         <p style="margin-bottom:0;">Kode Room:</p>
         <strong id="displayRoomCode">-</strong>
         
-        <!-- Drag & Drop Team Section -->
         <div style="display:flex; gap:10px; margin-top:20px; text-align:left;">
             <div id="zone-merah" style="flex:1; background:#ffe5e7; border: 2px dashed var(--danger); padding:10px; border-radius:15px;" ondrop="drop(event, 'merah')" ondragover="allowDrop(event)">
                 <h4 style="margin:0 0 10px 0; color:var(--danger); text-align:center;">🔴 Tim Merah</h4>
@@ -114,7 +113,7 @@
         </div>
     </div>
 
-    <!-- Halaman 3: Pemilihan Game -->
+    <!-- Halaman 3: Pemilihan Game (Hanya Kontrol Host) -->
     <div id="gameSelectionScreen" class="container">
         <h2>Pilih Permainan</h2>
         <button onclick="showTutorial('party')">🎊 Mode Party</button>
@@ -123,8 +122,8 @@
         <button class="btn-secondary" onclick="showTutorial('sambung_lirik')">🎤 Sambung Lirik</button>
         <button class="btn-secondary" onclick="showTutorial('estafet_bom')">💣 Estafet Bom</button>
         
-        <hr style="border-top: 2px dashed #eee; margin: 25px 0;">
-        <button class="btn-danger" style="background-color: #ffb3ba; color: white;" onclick="backToLobby()">🔙 Kembali ke Ruang Tunggu</button>
+        <hr style="border-top: 2px dashed #eee; margin: 25px 0;" id="hrSelectionBack">
+        <button id="btnSelectionBack" class="btn-danger" style="background-color: #ffb3ba; color: white;" onclick="backToLobby()">🔙 Kembali ke Ruang Tunggu</button>
     </div>
 
     <!-- Halaman 4: Arena Bermain -->
@@ -133,13 +132,13 @@
         <div id="gameArena"></div>
     </div>
 
-    <!-- Pop Up Tutorial -->
+    <!-- Pop Up Tutorial (Tersinkronisasi Penuh ke Seluruh Pemain) -->
     <div id="tutorialModal" class="modal">
         <div class="modal-content">
             <h2 id="tutorialTitle">Judul Game</h2>
             <p id="tutorialText" style="font-size: 16px; color: #666; margin-bottom: 20px;"></p>
             <button id="btnStartGame" onclick="startGame()">Mulai Game</button>
-            <button class="btn-danger" style="margin-top: 10px;" onclick="closeTutorial()">Kembali</button>
+            <button id="btnCloseTutorial" class="btn-danger" style="margin-top: 10px;" onclick="closeTutorial()">Kembali</button>
         </div>
     </div>
 
@@ -169,6 +168,7 @@
         
         window.mainInterval = null;
         window.cdInterval = null;
+        window.tickInterval = null;
         
         window.prevTerjawab = 0;
         window.prevStateTahap = "";
@@ -197,11 +197,15 @@
                     osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.5);
                     gain.gain.setValueAtTime(1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
                     osc.start(); osc.stop(ctx.currentTime + 0.8);
+                } else if (type === 'tick') {
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(600, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.2, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+                    osc.start(); osc.stop(ctx.currentTime + 0.05);
                 }
             } catch(e) {}
         };
 
-        // TYPO TOLERANCE (LEVENSHTEIN DISTANCE)
+        // LEVENSHTEIN TYPO TOLERANCE
         function getLevenshteinDistance(a, b) {
             if (a.length === 0) return b.length;
             if (b.length === 0) return a.length;
@@ -221,10 +225,12 @@
         }
 
         function isTypoAllowed(input, target) {
-            if (input === target) return true;
-            if (target.length <= 3) return input === target;
-            let maxDist = target.length <= 6 ? 1 : 2;
-            return getLevenshteinDistance(input, target) <= maxDist;
+            let cleanIn = input.replace(/[^a-z0-9]/g, '');
+            let cleanTar = target.replace(/[^a-z0-9]/g, '');
+            if (cleanIn === cleanTar) return true;
+            if (cleanTar.length <= 3) return cleanIn === cleanTar;
+            let maxDist = cleanTar.length <= 6 ? 1 : 2;
+            return getLevenshteinDistance(cleanIn, cleanTar) <= maxDist;
         }
 
         window.onload = async () => {
@@ -281,6 +287,11 @@
             await updateDoc(doc(db, "rooms", currentRoom), { status: "waiting", party_mode: false, game_state: deleteField() });
         };
         
+        window.forceurForceSync = async () => {
+            if(!confirm("Paksa mulai permainan untuk semua pemain sekarang?")) return;
+            await updateDoc(doc(db, "rooms", currentRoom), { "game_state.tahap": "countdown", "game_state.countdown_start": Date.now() });
+        };
+
         window.forceFinishRound = async () => {
             if(!confirm("Yakin ingin langsung mengakhiri ronde ini?")) return;
             const roomRef = doc(db, "rooms", currentRoom);
@@ -295,7 +306,7 @@
 
         window.backToLobby = async () => { await updateDoc(doc(db, "rooms", currentRoom), { status: "waiting", party_mode: false }); };
 
-        // MOBILE TOUCH-FRIENDLY DRAG & DROP SUPPORT
+        // TOUCH DRAG & DROP
         window.allowDrop = (ev) => ev.preventDefault();
         window.drag = (ev, id) => ev.dataTransfer.setData("id", id);
         window.drop = async (ev, team) => {
@@ -308,9 +319,7 @@
             let draggedId = null;
             document.addEventListener("touchstart", (e) => {
                 const item = e.target.closest(".player-item");
-                if (item && isHost) {
-                    draggedId = item.getAttribute("data-player-id");
-                }
+                if (item && isHost) { draggedId = item.getAttribute("data-player-id"); }
             }, {passive: true});
 
             document.addEventListener("touchend", async (e) => {
@@ -345,9 +354,26 @@
                 document.getElementById('btnTakeoverLobby').style.display = !isHost ? 'block' : 'none';
                 document.getElementById('drag-hint').innerText = isHost ? "💡 Host bisa geser (drag/sentuh) nama pemain untuk memindahkan tim." : "Menunggu Host membagi tim...";
 
-                if(data.status === "waiting") showScreen('lobbyScreen');
-                else if(data.status === "selecting_game") { if (isHost) showScreen('gameSelectionScreen'); else showScreen('lobbyScreen'); }
-                else if(data.status === "tutorial") showTutorialScreen(data.mode);
+                // SINKRONISASI FULL POPUP SELEKSI GAME / TUTORIAL
+                if (isHost) {
+                    document.getElementById('btnSelectionBack').style.display = 'block';
+                    document.getElementById('hrSelectionBack').style.display = 'block';
+                } else {
+                    document.getElementById('btnSelectionBack').style.display = 'none';
+                    document.getElementById('hrSelectionBack').style.display = 'none';
+                }
+
+                if(data.status === "waiting") {
+                    showScreen('lobbyScreen');
+                    document.getElementById('tutorialModal').style.display = 'none';
+                }
+                else if(data.status === "selecting_game") {
+                    showScreen('gameSelectionScreen');
+                    document.getElementById('tutorialModal').style.display = 'none';
+                }
+                else if(data.status === "tutorial") {
+                    showTutorialScreen(data.mode);
+                }
                 else if(data.status === "playing") {
                     document.getElementById('tutorialModal').style.display = 'none';
                     showScreen('gameScreen');
@@ -382,7 +408,7 @@
             await updateDoc(doc(db, "rooms", currentRoom), updates);
         };
 
-        window.goToGameSelection = async () => { showScreen('gameSelectionScreen'); await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game", party_mode: false }); };
+        window.goToGameSelection = async () => { await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game", party_mode: false }); };
         window.showTutorial = async (gameId) => { selectedGameMode = gameId; await updateDoc(doc(db, "rooms", currentRoom), { status: "tutorial", mode: gameId }); };
 
         window.showTutorialScreen = (mode) => {
@@ -390,11 +416,23 @@
             const desc = { party: "Mainkan 4 game secara estafet berurutan!", top_survei: "Tebak jawaban paling populer.", satu_hati: "Ketik jawaban yang sama persis dengan teman setimmu.", sambung_lirik: "Rebutan ngetik kata yang hilang.", estafet_bom: "Jawab cepat sebelum bom meledak!" };
             document.getElementById('tutorialTitle').innerText = titles[mode] || mode;
             document.getElementById('tutorialText').innerText = desc[mode] || "";
-            document.getElementById('btnStartGame').style.display = isHost ? 'inline-block' : 'none';
+            
+            // HILANGKAN TOMBOL KEMBALI DI LAYAR PEMAIN BIAR TAMPILANNYA IKUT HOST
+            const btnStart = document.getElementById('btnStartGame');
+            const btnClose = document.getElementById('btnCloseTutorial');
+            if (isHost) {
+                btnStart.style.display = 'inline-block';
+                btnClose.style.display = 'inline-block';
+                btnClose.innerText = "Kembali";
+                btnClose.onclick = closeTutorial;
+            } else {
+                btnStart.style.display = 'none';
+                btnClose.style.display = 'none'; // Pemain ikut screen host tanpa bisa klik back sendiri
+            }
             document.getElementById('tutorialModal').style.display = 'flex';
         };
 
-        window.closeTutorial = async () => { document.getElementById('tutorialModal').style.display = 'none'; if(isHost) await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game" }); };
+        window.closeTutorial = async () => { if(isHost) await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game" }); };
 
         window.startGame = async () => {
             document.getElementById('tutorialModal').style.display = 'none';
@@ -422,7 +460,6 @@
             const qSnap = await getDocs(collection(db, `bank_soal/${mode}/soal`));
             if(qSnap.empty) { alert(`Bank soal ${mode} kosong!`); if (isHost) goToGameSelection(); return; }
             
-            // PRIORITAS SOAL YANG BELUM MUNCUL DI ROOM INI
             let availableDocs = qSnap.docs.filter(d => !soalTerpakai.includes(d.id));
             if(availableDocs.length === 0) { availableDocs = qSnap.docs; soalTerpakai = []; }
             const randomDoc = availableDocs[Math.floor(Math.random() * availableDocs.length)];
@@ -440,7 +477,6 @@
             gameState.skor_merah = skor_merah; gameState.skor_biru = skor_biru;
 
             if (mode === 'top_survei') {
-                // Batasi maksimal 10 jawaban
                 let jwbList = data.jawaban || [];
                 if (jwbList.length > 10) jwbList = jwbList.slice(0, 10);
                 gameState.pertanyaan = data.pertanyaan; gameState.jawaban = jwbList; gameState.terjawab = [];
@@ -487,9 +523,13 @@
             const room = roomSnap.data();
             if (room.party_mode && room.party_queue && room.party_queue.length > 0) {
                 const q = room.party_queue; const currIdx = q.indexOf(room.game_state.mode);
+                // FIX BUG SKOR BERLIPAT GANDA: Hanya menambahkan delta skor game saat ini sekali saja ke party accumulator
                 await updateDoc(doc(db, "rooms", currentRoom), { party_skor_merah: (room.party_skor_merah || 0) + (room.game_state.skor_merah || 0), party_skor_biru: (room.party_skor_biru || 0) + (room.game_state.skor_biru || 0) });
-                if (currIdx !== -1 && currIdx < q.length - 1) await startRound(q[currIdx + 1], 1, []);
-                else await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game", party_mode: false });
+                if (currIdx !== -1 && currIdx < q.length - 1) {
+                    await startRound(q[currIdx + 1], 1, []);
+                } else {
+                    await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game", party_mode: false });
+                }
             } else { await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game" }); }
         };
 
@@ -515,10 +555,13 @@
 
             if(window.mainInterval) { clearInterval(window.mainInterval); window.mainInterval = null; }
             if(window.cdInterval) { clearInterval(window.cdInterval); window.cdInterval = null; }
+            if(window.tickInterval) { clearInterval(window.tickInterval); window.tickInterval = null; }
 
+            // LOADING & TOMBOL PAKSA SYNC UNTUK HOST
             if (state.tahap === "loading") {
                 title.innerText = "Sinkronisasi...";
-                arena.innerHTML = `<h3 style="color:#888;">Menunggu semua pemain terhubung...</h3><div style="margin:20px; font-size:40px;">⏳</div>`;
+                let hostSyncBtn = isHost ? `<button class="btn-secondary" style="background:#ff9f43; color:white; box-shadow:0 6px 0px #cc823a; margin-top:20px;" onclick="forceurForceSync()">🔄 Paksa Mulai / Refresh</button>` : '';
+                arena.innerHTML = `<h3 style="color:#888;">Menunggu semua pemain terhubung...</h3><div style="margin:20px; font-size:40px;">⏳</div><p style="font-size:13px; color:#aaa;">Jika pemain lain macet, Host dapat menekan tombol paksa di bawah.</p>${hostSyncBtn}`;
                 if (!state.ready_players.includes(myId)) { updateDoc(doc(db, "rooms", currentRoom), { "game_state.ready_players": arrayUnion(myId) }); }
                 if (isHost && state.ready_players.length >= Object.keys(data.players).length) { updateDoc(doc(db, "rooms", currentRoom), { "game_state.tahap": "countdown", "game_state.countdown_start": Date.now() }); }
                 return;
@@ -561,7 +604,6 @@
                 });
 
                 let btnSelesai = isHost ? (isParty ? (data.party_queue.indexOf(state.mode) === data.party_queue.length - 1 ? `<button onclick="nextGame()">🎉 Selesai Mode Party!</button>` : `<button onclick="nextGame()">Lanjut Game Berikutnya 🚀</button>`) : `<button onclick="nextGame()">Selesai (Kembali ke Menu)</button>`) : '';
-
                 let btnTakeoverScore = !isHost ? `<button class="btn-secondary" style="background:#ff9f43; color:white; box-shadow:0 6px 0px #cc823a; margin-top:10px;" onclick="takeOverHost()">👑 Ambil Alih Host</button>` : '';
 
                 arena.innerHTML = `<h1 style="font-size:60px; margin:0;">👑</h1><h2 style="color:${winColor}; margin-top:0;">${headingText}</h2><p style="color:#888; margin-bottom:20px;">Menampilkan ${isParty ? 'Total Skor Party' : 'Skor Akhir'}</p><div style="display:flex; justify-content:space-between; margin:30px 0; gap:10px;"><div style="flex:1; background:#ffe5e7; padding:15px; border-radius:15px; border:3px solid var(--danger);"><h3 style="margin:0 0 10px 0; color:var(--danger);">Tim Merah</h3><h2 style="margin:0 0 15px 0; color:var(--danger);">${dMerah} Poin</h2><hr style="border-top:1px solid var(--danger);">${pMerah}</div><div style="flex:1; background:#e5f3ff; padding:15px; border-radius:15px; border:3px solid var(--accent);"><h3 style="margin:0 0 10px 0; color:var(--accent);">Tim Biru</h3><h2 style="margin:0 0 15px 0; color:var(--accent);">${dBiru} Poin</h2><hr style="border-top:1px solid var(--accent);">${pBiru}</div></div>${btnSelesai}${btnTakeoverScore}`;
@@ -610,7 +652,6 @@
                     }
                 });
                 
-                // Layout 2 Kolom untuk Top Survei agar kompak di mobile
                 let listJawabanGrid = `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:15px;">${listItemsHTML}</div>`;
                 
                 htmlArena = `${teamReminder}${partySkorHTML}${highlightCard("Pertanyaan Top Survei", state.pertanyaan)}<div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold; font-size:16px;"><span style="color:white; background:var(--danger); padding:4px 10px; border-radius:8px;">Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:4px 10px; border-radius:8px;">Biru: ${state.skor_biru}</span></div>${commonTimerHTML}${listJawabanGrid}`;
@@ -667,6 +708,15 @@
                         const sisa = Math.max(0, state.waktu_habis - Date.now());
                         const elTimer = document.getElementById('bomTimer');
                         if(elTimer) elTimer.innerText = (sisa / 1000).toFixed(1);
+                        
+                        // SFX TIK-TOK DETIK-DETIK TERAKHIR BOM
+                        let sisaSec = Math.ceil(sisa / 1000);
+                        if (sisaSec <= 5 && sisaSec > 0 && !window.tickPlaying) {
+                            window.playSound('tick');
+                            window.tickPlaying = true;
+                            setTimeout(() => { window.tickPlaying = false; }, 900);
+                        }
+
                         if (sisa <= 0) {
                             clearInterval(window.mainInterval); window.mainInterval = null;
                             if (isHost) { 
@@ -695,7 +745,7 @@
             }
         }
 
-        // SUBMIT DENGAN TYPO TOLERANCE
+        // SUBMIT DENGAN FIX TYPO ESTAFET BOM (MENYIMPAN KATA BAKU YANG BENAR)
         window.submitJawaban = async () => {
             const inputEl = document.getElementById('jawabanInput');
             const rawInput = inputEl.value.trim().toLowerCase();
@@ -754,6 +804,7 @@
             await updateDoc(roomRef, updates);
         };
 
+        // FIX PENGAMANAN SAMBUNG LIRIK (PENGIRIM PERTAMA YANG DITERIMA MUTLAK)
         window.submitSL = async () => {
             const inputEl = document.getElementById('jawabanSL');
             if(!inputEl) return;
@@ -764,11 +815,16 @@
             const data = snap.data(); const state = data.game_state;
             if (state.tahap !== "ngetik") return; 
 
+            // Cek apakah sudah ada pemenang di database sebelumnya
+            if (state.tim_pemenang && state.tim_pemenang !== "none") return;
+
             if (isTypoAllowed(rawInput, state.jawaban_benar)) {
                 inputEl.value = '';
                 const myTeam = data.players[myId].tim;
                 await updateDoc(roomRef, { 
-                    "game_state.tahap": "hasil", "game_state.pemenang_ronde": data.players[myId].nama, "game_state.tim_pemenang": myTeam, 
+                    "game_state.tahap": "hasil", 
+                    "game_state.pemenang_ronde": data.players[myId].nama, 
+                    "game_state.tim_pemenang": myTeam, 
                     [`game_state.skor_${myTeam}`]: increment(50),
                     [`players.${myId}.skor_individu`]: increment(50)
                 });
@@ -779,6 +835,7 @@
             }
         };
 
+        // FIX TYPO ESTAFET BOM (MENYIMPAN KATA BAKU YANG COCOK)
         window.submitEB = async () => {
             const inputEl = document.getElementById('jawabanEB');
             if(!inputEl) return;
@@ -789,17 +846,17 @@
             const data = snap.data(); const state = data.game_state;
             if (state.tahap !== "ngetik" || state.bom_holder !== myId) return;
 
-            let isValidAnswer = false;
+            let matchedCanonical = null;
             if (state.jawaban_benar && state.jawaban_benar.length > 0) {
                 for (const ans of state.jawaban_benar) {
                     if (isTypoAllowed(rawInput, ans)) {
-                        isValidAnswer = true;
+                        matchedCanonical = ans;
                         break;
                     }
                 }
             }
 
-            if (!isValidAnswer || state.terjawab.includes(rawInput)) {
+            if (!matchedCanonical || state.terjawab.includes(matchedCanonical)) {
                 window.playSound('salah');
                 inputEl.value = '❌ Salah/Terpakai!'; inputEl.style.backgroundColor = '#ffcccb';
                 setTimeout(() => { inputEl.value = ''; inputEl.style.backgroundColor = '#fff'; }, 800);
@@ -817,7 +874,7 @@
             const targetLempar = availableMusuh.length > 0 ? availableMusuh[Math.floor(Math.random() * availableMusuh.length)] : myId;
             history.push(targetLempar);
 
-            await updateDoc(roomRef, { "game_state.bom_holder": targetLempar, "game_state.terjawab": arrayUnion(rawInput), [`game_state.${historyField}`]: history, "game_state.waktu_habis": Date.now() + (state.max_durasi * 1000) });
+            await updateDoc(roomRef, { "game_state.bom_holder": targetLempar, "game_state.terjawab": arrayUnion(matchedCanonical), [`game_state.${historyField}`]: history, "game_state.waktu_habis": Date.now() + (state.max_durasi * 1000) });
         };
 
         function showScreen(screenId) {
