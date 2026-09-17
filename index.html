@@ -145,7 +145,8 @@
     <!-- Firebase SDK & Scripts -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, deleteField, collection, getDocs, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+        // IMPORT runTransaction UNTUK MENCEGAH RACE CONDITION
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, deleteField, collection, getDocs, arrayUnion, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyClM-QyNTd9C-lnVueyIuSpUhO4lf12xNs",
@@ -173,6 +174,7 @@
         window.prevTerjawab = 0;
         window.prevStateTahap = "";
         window.hostIdData = "";
+        window.isProcessingNextGame = false;
 
         // SFX GENERATOR
         window.playSound = (type) => {
@@ -417,7 +419,6 @@
             document.getElementById('tutorialTitle').innerText = titles[mode] || mode;
             document.getElementById('tutorialText').innerText = desc[mode] || "";
             
-            // HILANGKAN TOMBOL KEMBALI DI LAYAR PEMAIN BIAR TAMPILANNYA IKUT HOST
             const btnStart = document.getElementById('btnStartGame');
             const btnClose = document.getElementById('btnCloseTutorial');
             if (isHost) {
@@ -427,7 +428,7 @@
                 btnClose.onclick = closeTutorial;
             } else {
                 btnStart.style.display = 'none';
-                btnClose.style.display = 'none'; // Pemain ikut screen host tanpa bisa klik back sendiri
+                btnClose.style.display = 'none'; 
             }
             document.getElementById('tutorialModal').style.display = 'flex';
         };
@@ -518,19 +519,41 @@
             else { await startRound(state.mode, state.ronde_sekarang + 1, state.soal_terpakai); }
         };
 
+        // FIX BUG: SKOR PARTY BERLIPAT GANDA (MENGGUNAKAN TRANSACTION UNTUK MENGUNCI PENJUMLAHAN)
         window.nextGame = async () => {
-            const roomSnap = await getDoc(doc(db, "rooms", currentRoom));
+            if (window.isProcessingNextGame) return;
+            window.isProcessingNextGame = true;
+            
+            const roomRef = doc(db, "rooms", currentRoom);
+            const roomSnap = await getDoc(roomRef);
             const room = roomSnap.data();
+            
             if (room.party_mode && room.party_queue && room.party_queue.length > 0) {
-                const q = room.party_queue; const currIdx = q.indexOf(room.game_state.mode);
-                // FIX BUG SKOR BERLIPAT GANDA: Hanya menambahkan delta skor game saat ini sekali saja ke party accumulator
-                await updateDoc(doc(db, "rooms", currentRoom), { party_skor_merah: (room.party_skor_merah || 0) + (room.game_state.skor_merah || 0), party_skor_biru: (room.party_skor_biru || 0) + (room.game_state.skor_biru || 0) });
+                const q = room.party_queue; 
+                const currIdx = q.indexOf(room.game_state.mode);
+                
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(roomRef);
+                    const r = snap.data();
+                    if (r.game_state && r.game_state.party_score_added) return; 
+                    
+                    let updates = {
+                        party_skor_merah: (r.party_skor_merah || 0) + (r.game_state.skor_merah || 0),
+                        party_skor_biru: (r.party_skor_biru || 0) + (r.game_state.skor_biru || 0),
+                        "game_state.party_score_added": true
+                    };
+                    transaction.update(roomRef, updates);
+                });
+
                 if (currIdx !== -1 && currIdx < q.length - 1) {
                     await startRound(q[currIdx + 1], 1, []);
                 } else {
-                    await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game", party_mode: false });
+                    await updateDoc(roomRef, { status: "selecting_game", party_mode: false });
                 }
-            } else { await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game" }); }
+            } else { 
+                await updateDoc(roomRef, { status: "selecting_game" }); 
+            }
+            window.isProcessingNextGame = false;
         };
 
         function renderGamePlay(data) {
@@ -555,9 +578,7 @@
 
             if(window.mainInterval) { clearInterval(window.mainInterval); window.mainInterval = null; }
             if(window.cdInterval) { clearInterval(window.cdInterval); window.cdInterval = null; }
-            if(window.tickInterval) { clearInterval(window.tickInterval); window.tickInterval = null; }
 
-            // LOADING & TOMBOL PAKSA SYNC UNTUK HOST
             if (state.tahap === "loading") {
                 title.innerText = "Sinkronisasi...";
                 let hostSyncBtn = isHost ? `<button class="btn-secondary" style="background:#ff9f43; color:white; box-shadow:0 6px 0px #cc823a; margin-top:20px;" onclick="forceurForceSync()">🔄 Paksa Mulai / Refresh</button>` : '';
@@ -709,7 +730,6 @@
                         const elTimer = document.getElementById('bomTimer');
                         if(elTimer) elTimer.innerText = (sisa / 1000).toFixed(1);
                         
-                        // SFX TIK-TOK DETIK-DETIK TERAKHIR BOM
                         let sisaSec = Math.ceil(sisa / 1000);
                         if (sisaSec <= 5 && sisaSec > 0 && !window.tickPlaying) {
                             window.playSound('tick');
@@ -745,38 +765,47 @@
             }
         }
 
-        // SUBMIT DENGAN FIX TYPO ESTAFET BOM (MENYIMPAN KATA BAKU YANG BENAR)
+        // FIX BUG RACE CONDITION TOP SURVEI (MENGGUNAKAN TRANSACTION)
         window.submitJawaban = async () => {
             const inputEl = document.getElementById('jawabanInput');
             const rawInput = inputEl.value.trim().toLowerCase();
             if(!rawInput) return;
             const roomRef = doc(db, "rooms", currentRoom);
-            const roomSnap = await getDoc(roomRef);
-            const state = roomSnap.data().game_state;
-            if(state.tahap !== "ngetik") return;
+            
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const roomSnap = await transaction.get(roomRef);
+                    const data = roomSnap.data();
+                    const state = data.game_state;
+                    if (state.tahap !== "ngetik") throw "not_ngetik";
 
-            let matchedEntry = null;
-            for (const j of state.jawaban) {
-                if (isTypoAllowed(rawInput, j.teks)) {
-                    matchedEntry = j;
-                    break;
-                }
-            }
+                    let matchedEntry = null;
+                    for (const j of state.jawaban) {
+                        if (isTypoAllowed(rawInput, j.teks)) {
+                            matchedEntry = j;
+                            break;
+                        }
+                    }
 
-            const alreadyAns = matchedEntry ? state.terjawab.find(t => t.teks === matchedEntry.teks) : null;
+                    if (!matchedEntry) throw "salah";
+                    if (state.terjawab.find(t => t.teks === matchedEntry.teks)) throw "terpakai";
 
-            if (matchedEntry && !alreadyAns) {
-                inputEl.value = '';
-                const myTeam = roomSnap.data().players[myId].tim;
-                await updateDoc(roomRef, { 
-                    "game_state.terjawab": arrayUnion(matchedEntry), 
-                    [`game_state.skor_${myTeam}`]: increment(matchedEntry.poin),
-                    [`players.${myId}.skor_individu`]: increment(matchedEntry.poin)
+                    const myTeam = data.players[myId].tim;
+                    let newTerjawab = [...state.terjawab, matchedEntry];
+
+                    transaction.update(roomRef, {
+                        "game_state.terjawab": newTerjawab,
+                        [`game_state.skor_${myTeam}`]: (state[`skor_${myTeam}`] || 0) + matchedEntry.poin,
+                        [`players.${myId}.skor_individu`]: (data.players[myId].skor_individu || 0) + matchedEntry.poin
+                    });
                 });
-            } else {
-                window.playSound('salah');
-                inputEl.value = '❌ Salah/Terpakai!'; inputEl.style.backgroundColor = '#ffcccb';
-                setTimeout(() => { inputEl.value = ''; inputEl.style.backgroundColor = '#fff'; }, 800);
+                inputEl.value = '';
+            } catch (error) {
+                if (error === "salah" || error === "terpakai") {
+                    window.playSound('salah');
+                    inputEl.value = '❌ Salah/Terpakai!'; inputEl.style.backgroundColor = '#ffcccb';
+                    setTimeout(() => { inputEl.value = ''; inputEl.style.backgroundColor = '#fff'; }, 800);
+                }
             }
         }
 
@@ -804,77 +833,101 @@
             await updateDoc(roomRef, updates);
         };
 
-        // FIX PENGAMANAN SAMBUNG LIRIK (PENGIRIM PERTAMA YANG DITERIMA MUTLAK)
+        // FIX BUG RACE CONDITION SAMBUNG LIRIK (HANYA PENGIRIM TERCEPAT PERTAMA YANG DITERIMA MUTLAK)
         window.submitSL = async () => {
             const inputEl = document.getElementById('jawabanSL');
             if(!inputEl) return;
             const rawInput = inputEl.value.trim().toLowerCase();
             if(!rawInput) return;
             const roomRef = doc(db, "rooms", currentRoom);
-            const snap = await getDoc(roomRef);
-            const data = snap.data(); const state = data.game_state;
-            if (state.tahap !== "ngetik") return; 
+            
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(roomRef);
+                    const data = snap.data();
+                    const state = data.game_state;
 
-            // Cek apakah sudah ada pemenang di database sebelumnya
-            if (state.tim_pemenang && state.tim_pemenang !== "none") return;
+                    if (state.tahap !== "ngetik") throw "not_ngetik";
+                    if (state.tim_pemenang && state.tim_pemenang !== "none") throw "telat";
+                    if (!isTypoAllowed(rawInput, state.jawaban_benar)) throw "salah";
 
-            if (isTypoAllowed(rawInput, state.jawaban_benar)) {
-                inputEl.value = '';
-                const myTeam = data.players[myId].tim;
-                await updateDoc(roomRef, { 
-                    "game_state.tahap": "hasil", 
-                    "game_state.pemenang_ronde": data.players[myId].nama, 
-                    "game_state.tim_pemenang": myTeam, 
-                    [`game_state.skor_${myTeam}`]: increment(50),
-                    [`players.${myId}.skor_individu`]: increment(50)
+                    const myTeam = data.players[myId].tim;
+                    transaction.update(roomRef, {
+                        "game_state.tahap": "hasil",
+                        "game_state.pemenang_ronde": data.players[myId].nama,
+                        "game_state.tim_pemenang": myTeam,
+                        [`game_state.skor_${myTeam}`]: (state[`skor_${myTeam}`] || 0) + 50,
+                        [`players.${myId}.skor_individu`]: (data.players[myId].skor_individu || 0) + 50
+                    });
                 });
-            } else {
-                window.playSound('salah');
-                inputEl.value = '❌ Salah!'; inputEl.style.backgroundColor = '#ffcccb';
-                setTimeout(() => { inputEl.value = ''; inputEl.style.backgroundColor = '#fff'; }, 800);
+                inputEl.value = '';
+            } catch (error) {
+                if (error === "salah" || error === "telat") {
+                    window.playSound('salah');
+                    inputEl.value = error === "telat" ? '⏳ Keduluan Teman!' : '❌ Salah!'; 
+                    inputEl.style.backgroundColor = '#ffcccb';
+                    setTimeout(() => { inputEl.value = ''; inputEl.style.backgroundColor = '#fff'; }, 800);
+                }
             }
         };
 
-        // FIX TYPO ESTAFET BOM (MENYIMPAN KATA BAKU YANG COCOK)
+        // FIX BUG ESTAFET BOM (MENGGUNAKAN TRANSACTION UNTUK MENUNJUK KORBAN SELANJUTNYA SECARA AMAN)
         window.submitEB = async () => {
             const inputEl = document.getElementById('jawabanEB');
             if(!inputEl) return;
             const rawInput = inputEl.value.trim().toLowerCase();
             if(!rawInput) return;
             const roomRef = doc(db, "rooms", currentRoom);
-            const snap = await getDoc(roomRef);
-            const data = snap.data(); const state = data.game_state;
-            if (state.tahap !== "ngetik" || state.bom_holder !== myId) return;
+            
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(roomRef);
+                    const data = snap.data();
+                    const state = data.game_state;
 
-            let matchedCanonical = null;
-            if (state.jawaban_benar && state.jawaban_benar.length > 0) {
-                for (const ans of state.jawaban_benar) {
-                    if (isTypoAllowed(rawInput, ans)) {
-                        matchedCanonical = ans;
-                        break;
+                    if (state.tahap !== "ngetik" || state.bom_holder !== myId) throw "bukan_giliran";
+
+                    let matchedCanonical = null;
+                    if (state.jawaban_benar && state.jawaban_benar.length > 0) {
+                        for (const ans of state.jawaban_benar) {
+                            if (isTypoAllowed(rawInput, ans)) {
+                                matchedCanonical = ans;
+                                break;
+                            }
+                        }
                     }
+
+                    if (!matchedCanonical || state.terjawab.includes(matchedCanonical)) {
+                        throw "salah_terpakai";
+                    }
+
+                    const targetTeam = data.players[myId].tim === 'merah' ? 'biru' : 'merah';
+                    const musuh = Object.keys(data.players).filter(id => data.players[id].tim === targetTeam);
+                    
+                    let historyField = targetTeam === 'merah' ? 'bom_history_merah' : 'bom_history_biru';
+                    let history = state[historyField] || [];
+                    let availableMusuh = musuh.filter(m => !history.includes(m));
+                    if (availableMusuh.length === 0) { availableMusuh = musuh; history = []; }
+                    const targetLempar = availableMusuh.length > 0 ? availableMusuh[Math.floor(Math.random() * availableMusuh.length)] : myId;
+                    
+                    let newHistory = [...history, targetLempar];
+                    let newTerjawab = [...state.terjawab, matchedCanonical];
+
+                    transaction.update(roomRef, {
+                        "game_state.bom_holder": targetLempar,
+                        "game_state.terjawab": newTerjawab,
+                        [`game_state.${historyField}`]: newHistory,
+                        "game_state.waktu_habis": Date.now() + (state.max_durasi * 1000)
+                    });
+                });
+                inputEl.value = '';
+            } catch (error) {
+                if (error === "salah_terpakai") {
+                    window.playSound('salah');
+                    inputEl.value = '❌ Salah/Terpakai!'; inputEl.style.backgroundColor = '#ffcccb';
+                    setTimeout(() => { inputEl.value = ''; inputEl.style.backgroundColor = '#fff'; }, 800);
                 }
             }
-
-            if (!matchedCanonical || state.terjawab.includes(matchedCanonical)) {
-                window.playSound('salah');
-                inputEl.value = '❌ Salah/Terpakai!'; inputEl.style.backgroundColor = '#ffcccb';
-                setTimeout(() => { inputEl.value = ''; inputEl.style.backgroundColor = '#fff'; }, 800);
-                return;
-            }
-
-            inputEl.value = '';
-            const targetTeam = data.players[myId].tim === 'merah' ? 'biru' : 'merah';
-            const musuh = Object.keys(data.players).filter(id => data.players[id].tim === targetTeam);
-            
-            let historyField = targetTeam === 'merah' ? 'bom_history_merah' : 'bom_history_biru';
-            let history = state[historyField] || [];
-            let availableMusuh = musuh.filter(m => !history.includes(m));
-            if (availableMusuh.length === 0) { availableMusuh = musuh; history = []; }
-            const targetLempar = availableMusuh.length > 0 ? availableMusuh[Math.floor(Math.random() * availableMusuh.length)] : myId;
-            history.push(targetLempar);
-
-            await updateDoc(roomRef, { "game_state.bom_holder": targetLempar, "game_state.terjawab": arrayUnion(matchedCanonical), [`game_state.${historyField}`]: history, "game_state.waktu_habis": Date.now() + (state.max_durasi * 1000) });
         };
 
         function showScreen(screenId) {
