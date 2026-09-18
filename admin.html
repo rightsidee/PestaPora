@@ -3,210 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Admin - Pesta Pora</title>
+    <title>Pesta Pora - Dashboard Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #f7fdf9; 
-            --primary: #A8E6CF; 
-            --secondary: #DCEDC1; 
-            --accent: #FFD3B6; 
-            --danger: #FF8B94; 
-            --text: #4a5d52;
-            --sidebar-width: 250px;
+            --bg-color: #f7fdf9; --primary: #A8E6CF; --secondary: #DCEDC1; 
+            --danger: #ff6b81; --accent: #4a8cff; --text: #4a5d52;
         }
         body {
-            font-family: 'Fredoka', sans-serif; background: linear-gradient(135deg, var(--bg-color), #e8f7f0);
-            color: var(--text); margin: 0; display: flex; height: 100vh; box-sizing: border-box;
+            font-family: 'Fredoka', sans-serif; background: var(--bg-color); color: var(--text);
+            margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center;
         }
+        #appContainer { display: none; width: 100%; max-width: 800px; }
+        .container {
+            width: 100%; background: white; padding: 25px; border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(168, 230, 207, 0.3); margin-bottom: 20px;
+            border: 4px solid var(--primary); box-sizing: border-box; max-width: 800px;
+        }
+        #loginScreen { max-width: 400px; margin-top: 50px; }
+        h1, h2, h3 { color: #2d6a4f; margin-top: 0; text-align: center; }
         
-        #toast {
-            visibility: hidden; min-width: 250px; margin-left: -125px;
-            background-color: #333; color: #fff; text-align: center; border-radius: 12px; 
-            padding: 16px; position: fixed; z-index: 2000; left: 50%; bottom: 30px; 
-            font-size: 16px; font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        select, input[type="text"], input[type="password"], input[type="number"], textarea {
+            width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px;
+            border: 2px solid #ddd; font-size: 16px; font-family: 'Fredoka', sans-serif;
+            box-sizing: border-box; outline: none; transition: 0.2s;
         }
-        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-        #toast.error { background-color: #ff4757; }
-        #toast.success { background-color: #2ed573; }
-        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+        select:focus, input:focus, textarea:focus { border-color: var(--primary); }
+        textarea { resize: vertical; min-height: 80px; }
 
-        #loginScreen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, var(--bg-color), #e8f7f0);
-            display: flex; justify-content: center; align-items: center; z-index: 1000;
-        }
-        .login-box {
-            background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 20px rgba(168, 230, 207, 0.3); 
-            text-align: center; border: 4px solid var(--primary); width: 90%; max-width: 320px;
-        }
-        
-        #dashboardScreen { display: none; width: 100%; }
-        .sidebar {
-            width: var(--sidebar-width); background: white; padding: 20px 0;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.05); z-index: 10; border-right: 4px solid var(--primary);
-        }
-        .sidebar h2 { text-align: center; color: #2d6a4f; margin-bottom: 30px; font-size: 28px; }
-        .nav-item {
-            padding: 15px 20px; cursor: pointer; border-left: 6px solid transparent;
-            transition: 0.2s; font-weight: 600; font-size: 18px; color: var(--text);
-        }
-        .nav-item:hover { background: #f0fbf4; }
-        .nav-item.active { border-left-color: #2d6a4f; color: #2d6a4f; background: #e8f7f0; }
-        
-        .content { flex-grow: 1; padding: 40px; overflow-y: auto; }
-        .panel { 
-            display: none; background: white; padding: 30px; border-radius: 24px; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05); border: 4px solid var(--primary); 
-            max-width: 800px; margin: 0 auto; 
-        }
-        .panel.active { display: block; animation: fadeIn 0.4s; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        input, textarea {
-            width: 100%; padding: 15px; margin: 10px 0; border-radius: 12px; 
-            border: 2px solid #ddd; font-size: 16px; box-sizing: border-box; 
-            font-family: 'Fredoka', sans-serif; outline: none; transition: 0.2s;
-        }
-        input:focus, textarea:focus { border-color: var(--primary); }
-        
         button {
-            width: 100%; padding: 15px; margin: 15px 0 5px; border-radius: 15px; border: none; 
-            background-color: var(--primary); color: #2d6a4f; cursor: pointer; font-weight: 700; 
-            font-size: 18px; font-family: 'Fredoka', sans-serif; box-shadow: 0 6px 0px #86c4ad; 
-            transition: transform 0.1s, box-shadow 0.1s;
+            padding: 12px 20px; border-radius: 12px; border: none; font-size: 16px; font-weight: 700;
+            cursor: pointer; transition: 0.2s; font-family: 'Fredoka', sans-serif;
         }
-        button:active { transform: translateY(6px); box-shadow: 0 0px 0px #86c4ad; }
-        .btn-small { width: auto; padding: 8px 15px; font-size: 14px; margin: 0; box-shadow: 0 4px 0px #d8767e; background-color: var(--danger); color: white;}
-        .btn-small:active { transform: translateY(4px); box-shadow: 0 0px 0px #d8767e; }
+        .btn-primary { background-color: var(--primary); color: #2d6a4f; box-shadow: 0 4px 0px #86c4ad; width: 100%; margin-top: 10px; }
+        .btn-primary:active { transform: translateY(4px); box-shadow: 0 0px 0px #86c4ad; }
+        .btn-danger { background-color: var(--danger); color: white; }
+        .btn-edit { background-color: #f39c12; color: white; border-radius: 8px; padding: 8px 12px; }
+        .btn-cancel { background-color: #ccc; color: #333; box-shadow: 0 4px 0px #999; margin-top: 10px; width: 100%; display: none; }
+        .btn-cancel:active { transform: translateY(4px); box-shadow: 0 0px 0px #999; }
         
-        .form-group { margin-bottom: 20px; text-align: left; }
-        label { font-weight: 700; font-size: 16px; color: #2d6a4f; }
-        h3 { margin-top: 0; color: #2d6a4f; font-size: 24px; border-bottom: 2px dashed #eee; padding-bottom: 15px; }
+        .list-item {
+            background: #fff; border: 2px solid #eee; padding: 15px; border-radius: 12px;
+            margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px;
+            transition: 0.2s;
+        }
+        .list-item:hover { border-color: var(--primary); }
+        .item-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .item-actions { display: flex; gap: 8px; align-items: center; }
 
-        .settings-box { background: #f0fbf4; border: 2px dashed #A8E6CF; padding: 20px; border-radius: 15px; margin-bottom: 25px; }
-        .settings-box h4 { margin-top: 0; color: #2d6a4f; margin-bottom: 10px; font-size: 18px;}
-        .input-row { display: flex; gap: 15px; }
+        .ts-answer-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+        .ts-answer-row input[type="text"] { flex: 3; }
+        .ts-answer-row input[type="number"] { flex: 1; }
+        
+        /* Toggle Switch CSS */
+        .switch { position: relative; display: inline-block; width: 46px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2ed573; }
+        input:checked + .slider:before { transform: translateX(22px); }
+        .toggle-label { font-size: 14px; color: #666; font-weight: bold; margin-right: 8px; }
 
-        .list-container { margin-top: 30px; border-top: 2px dashed #eee; padding-top: 20px; }
-        .list-item { background: #fdfdfd; border: 2px solid #eee; border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; text-align: left; }
-        .list-text { font-weight: 600; color: #555; font-size: 15px; margin-right: 15px; flex-grow: 1; }
+        .inactive-item { opacity: 0.6; background-color: #f9f9f9; }
     </style>
 </head>
 <body>
 
-    <div id="toast">Notifikasi</div>
-
-    <div id="loginScreen">
-        <div class="login-box">
-            <h2 style="color: #2d6a4f; font-size: 32px; margin-bottom: 5px;">Admin 🔒</h2>
-            <p style="color: #888; margin-top: 0;">Masukkan kata sandi Pesta Pora</p>
-            <input type="password" id="adminPassword" placeholder="Kata Sandi" onkeypress="if(event.key === 'Enter') login()">
-            <button onclick="login()">Masuk Dapur</button>
-        </div>
+    <!-- Layar Login Kustom -->
+    <div id="loginScreen" class="container">
+        <h1>🔐 Login Admin</h1>
+        <p style="text-align: center; color: #888; margin-top: -10px;">Masukkan password untuk akses</p>
+        <input type="password" id="adminPasswordInput" placeholder="Password" onkeypress="if(event.key === 'Enter') checkPassword()">
+        <button class="btn-primary" onclick="checkPassword()">Masuk</button>
+        <p id="loginError" style="color: var(--danger); text-align: center; display: none; font-weight: bold; margin-top: 15px;">❌ Password salah!</p>
     </div>
 
-    <div id="dashboardScreen">
-        <div class="sidebar">
-            <h2>Dapur Soal</h2>
-            <div class="nav-item active" onclick="switchTab('topSurvei', this)">📊 Top Survei</div>
-            <div class="nav-item" onclick="switchTab('satuHati', this)">💞 Satu Hati</div>
-            <div class="nav-item" onclick="switchTab('sambungLirik', this)">🎤 Sambung Lirik</div>
-            <div class="nav-item" onclick="switchTab('estafetBom', this)">💣 Estafet Bom</div>
+    <!-- Konten Dashboard Utama -->
+    <div id="appContainer">
+        <div class="container">
+            <h1>⚙️ Dashboard Admin</h1>
+            <p style="text-align: center; color: #888; margin-top: -10px;">Kelola Bank Soal Pesta Pora</p>
+            
+            <label style="font-weight: bold; color: #2d6a4f;">Pilih Game:</label>
+            <select id="modeSelect" onchange="changeMode()">
+                <option value="top_survei">Top Survei 📊</option>
+                <option value="satu_hati">Satu Hati 💞</option>
+                <option value="beda_hati">Beda Hati 💔 (Baru)</option>
+                <option value="sambung_lirik">Sambung Lirik 🎤</option>
+                <option value="estafet_bom">Estafet Bom 💣</option>
+            </select>
         </div>
 
-        <div class="content">
-            <!-- Panel Top Survei -->
-            <div id="topSurvei" class="panel active">
-                <div class="settings-box">
-                    <h4>⚙️ Pengaturan Top Survei</h4>
-                    <div class="input-row">
-                        <input type="number" id="tsRonde" placeholder="Max Ronde (Cth: 5)">
-                        <input type="number" id="tsDurasi" placeholder="Durasi (Detik, Cth: 60)">
-                    </div>
-                    <button class="btn-small" style="background:#2ed573; box-shadow: 0 4px 0px #24a85a;" onclick="simpanAturan('top_survei', 'tsRonde', 'tsDurasi')">Simpan Aturan</button>
-                </div>
-                <h3>Tambah Soal: Top Survei</h3>
-                <div class="form-group">
-                    <label>Pertanyaan Survei</label>
-                    <input type="text" id="tsPertanyaan" placeholder="Contoh: Alasan orang telat ngantor">
-                </div>
-                <div class="form-group">
-                    <label>Jawaban (Pisahkan koma, urutkan dari yang paling sering)</label>
-                    <textarea id="tsJawaban" rows="3" placeholder="Macet, Kesiangan, Ban Bocor, Hujan"></textarea>
-                </div>
-                <button onclick="simpanTopSurvei()">➕ Tambah Soal</button>
-                <div class="list-container" id="list-top_survei"><h3>Daftar Soal</h3><div id="render-top_survei">Memuat...</div></div>
-            </div>
+        <div class="container">
+            <h2 id="formTitle">Tambah Soal Baru</h2>
+            <div id="dynamicForm"></div>
+            <button id="btnSave" class="btn-primary" onclick="saveData()">Simpan Soal</button>
+            <button id="btnCancel" class="btn-cancel" onclick="cancelEdit()">Batal Edit</button>
+        </div>
 
-            <!-- Panel Satu Hati -->
-            <div id="satuHati" class="panel">
-                <div class="settings-box">
-                    <h4>⚙️ Pengaturan Satu Hati</h4>
-                    <div class="input-row">
-                        <input type="number" id="shRonde" placeholder="Max Ronde (Cth: 5)">
-                        <input type="number" id="shDurasi" placeholder="Durasi (Detik, Cth: 20)">
-                    </div>
-                    <button class="btn-small" style="background:#2ed573; box-shadow: 0 4px 0px #24a85a;" onclick="simpanAturan('satu_hati', 'shRonde', 'shDurasi')">Simpan Aturan</button>
-                </div>
-                <h3>Tambah Soal: Satu Hati</h3>
-                <div class="form-group">
-                    <label>Kategori / Prompt</label>
-                    <input type="text" id="shPrompt" placeholder="Contoh: Sebutkan satu merek mi instan kuah">
-                </div>
-                <button onclick="simpanSatuHati()">➕ Tambah Soal</button>
-                <div class="list-container" id="list-satu_hati"><h3>Daftar Soal</h3><div id="render-satu_hati">Memuat...</div></div>
-            </div>
-
-            <!-- Panel Sambung Lirik -->
-            <div id="sambungLirik" class="panel">
-                <div class="settings-box">
-                    <h4>⚙️ Pengaturan Sambung Lirik</h4>
-                    <div class="input-row">
-                        <input type="number" id="slRonde" placeholder="Max Ronde (Cth: 5)">
-                        <input type="number" id="slDurasi" placeholder="Durasi (Detik, Cth: 20)">
-                    </div>
-                    <button class="btn-small" style="background:#2ed573; box-shadow: 0 4px 0px #24a85a;" onclick="simpanAturan('sambung_lirik', 'slRonde', 'slDurasi')">Simpan Aturan</button>
-                </div>
-                <h3>Tambah Soal: Sambung Lirik</h3>
-                <div class="form-group">
-                    <label>Lirik Lagu Lengkap (Sistem game yang akan sensor & potong acak)</label>
-                    <textarea id="slLirik" rows="4" placeholder="Masukkan lirik panjang di sini..."></textarea>
-                </div>
-                <button onclick="simpanSambungLirik()">➕ Tambah Soal</button>
-                <div class="list-container" id="list-sambung_lirik"><h3>Daftar Soal</h3><div id="render-sambung_lirik">Memuat...</div></div>
-            </div>
-
-            <!-- Panel Estafet Bom -->
-            <div id="estafetBom" class="panel">
-                <div class="settings-box">
-                    <h4>⚙️ Pengaturan Estafet Bom</h4>
-                    <div class="input-row">
-                        <input type="number" id="ebRonde" placeholder="Max Ronde (Cth: 5)">
-                        <input type="number" id="ebDurasi" placeholder="Durasi (Detik, Cth: 15)">
-                    </div>
-                    <button class="btn-small" style="background:#2ed573; box-shadow: 0 4px 0px #24a85a;" onclick="simpanAturan('estafet_bom', 'ebRonde', 'ebDurasi')">Simpan Aturan</button>
-                </div>
-                <h3>Tambah Soal: Estafet Bom</h3>
-                <div class="form-group">
-                    <label>Kategori Bom</label>
-                    <input type="text" id="ebKategori" placeholder="Contoh: Hewan berawalan huruf K">
-                </div>
-                <div class="form-group">
-                    <label>Daftar Jawaban Valid (Pisahkan dengan koma)</label>
-                    <textarea id="ebJawaban" rows="3" placeholder="Kucing, Kadal, Kuda, Kambing, Katak"></textarea>
-                </div>
-                <button onclick="simpanEstafetBom()">➕ Tambah Soal</button>
-                <div class="list-container" id="list-estafet_bom"><h3>Daftar Soal</h3><div id="render-estafet_bom">Memuat...</div></div>
-            </div>
+        <div class="container">
+            <h2>Daftar Soal Tersimpan</h2>
+            <div id="soalList"></div>
         </div>
     </div>
 
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, addDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyClM-QyNTd9C-lnVueyIuSpUhO4lf12xNs",
@@ -220,148 +124,294 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        window.showToast = (msg, type = 'success') => {
-            const toast = document.getElementById("toast");
-            toast.innerText = msg; toast.className = `show ${type}`;
-            setTimeout(() => { toast.className = toast.className.replace(`show ${type}`, ""); }, 3000);
-        };
+        let currentMode = 'top_survei';
+        let currentEditId = null;
+        let unsubscribe = null;
+        let currentDataCache = {}; 
 
-        window.login = async () => {
-            const passInput = document.getElementById('adminPassword').value;
+        // CEK PASSWORD DARI FIREBASE
+        window.checkPassword = async () => {
+            const input = document.getElementById('adminPasswordInput').value;
             try {
-                const docSnap = await getDoc(doc(db, "pengaturan", "admin"));
-                if (docSnap.exists() && docSnap.data().password === passInput) {
-                    document.getElementById('loginScreen').style.display = 'none';
-                    document.getElementById('dashboardScreen').style.display = 'flex';
-                    showToast("Login Berhasil! 🎉", "success");
-                    muatSemuaAturan();
-                    muatDaftarSoal('top_survei');
-                } else { showToast("Password salah!", "error"); }
-            } catch (e) { showToast("Gagal koneksi database!", "error"); }
-        };
-
-        window.switchTab = (tabId, element) => {
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            element.classList.add('active');
-
-            const mapIdToGame = { 'topSurvei': 'top_survei', 'satuHati': 'satu_hati', 'sambungLirik': 'sambung_lirik', 'estafetBom': 'estafet_bom' };
-            if (mapIdToGame[tabId]) muatDaftarSoal(mapIdToGame[tabId]);
-        };
-
-        // --- MANAJEMEN ATURAN PER GAME ---
-        async function muatSemuaAturan() {
-            const games = [
-                { id: 'top_survei', r: 'tsRonde', d: 'tsDurasi', defR: 5, defD: 60 },
-                { id: 'satu_hati', r: 'shRonde', d: 'shDurasi', defR: 5, defD: 20 },
-                { id: 'sambung_lirik', r: 'slRonde', d: 'slDurasi', defR: 5, defD: 20 },
-                { id: 'estafet_bom', r: 'ebRonde', d: 'ebDurasi', defR: 5, defD: 15 }
-            ];
-            
-            for (let g of games) {
-                try {
-                    const snap = await getDoc(doc(db, "pengaturan", g.id));
-                    if(snap.exists()) {
-                        document.getElementById(g.r).value = snap.data().max_ronde || g.defR;
-                        document.getElementById(g.d).value = snap.data().durasi || g.defD;
-                    } else {
-                        document.getElementById(g.r).value = g.defR; document.getElementById(g.d).value = g.defD;
-                    }
-                } catch(e) {}
-            }
-        }
-
-        window.simpanAturan = async (gameId, idRonde, idDurasi) => {
-            const ronde = parseInt(document.getElementById(idRonde).value);
-            const durasi = parseInt(document.getElementById(idDurasi).value);
-            if(!ronde || !durasi) return showToast("Isi angka yang bener ya!", "error");
-            try {
-                await setDoc(doc(db, "pengaturan", gameId), { max_ronde: ronde, durasi: durasi });
-                showToast("Pengaturan game disimpan! ⚙️", "success");
-            } catch (e) { showToast("Gagal menyimpan aturan!", "error"); }
-        };
-
-        // --- MANAJEMEN CRUD SOAL ---
-        async function muatDaftarSoal(gameId) {
-            const container = document.getElementById(`render-${gameId}`);
-            container.innerHTML = "Memuat...";
-            try {
-                const qSnap = await getDocs(collection(db, `bank_soal/${gameId}/soal`));
-                if(qSnap.empty) { container.innerHTML = "<p style='color:#888;'>Belum ada soal tersimpan.</p>"; return; }
+                const adminRef = doc(db, "pengaturan", "admin");
+                const adminSnap = await getDoc(adminRef);
                 
-                let html = '';
-                qSnap.forEach(docSnap => {
-                    const id = docSnap.id; const d = docSnap.data();
-                    let teks = '';
-                    if(gameId === 'top_survei') teks = `<b>${d.pertanyaan}</b> (${d.jawaban.length} Jawaban)`;
-                    else if(gameId === 'satu_hati') teks = `<b>${d.prompt}</b>`;
-                    else if(gameId === 'sambung_lirik') {
-                        // FIX BUGS: Support format lama biar nggak error
-                        const teksLirik = d.lirik_lengkap || d.lirik_tampil || "Format lirik lama";
-                        teks = `<b>Lirik:</b> <small>${teksLirik.substring(0, 50)}...</small>`;
-                    }
-                    else if(gameId === 'estafet_bom') teks = `<b>${d.kategori}</b> (${d.jawaban_benar ? d.jawaban_benar.length : 0} Jawaban)`;
+                let correctPassword = "admin"; // Default cadangan jika dokumen belum ada
+                if (adminSnap.exists() && adminSnap.data().password) {
+                    correctPassword = adminSnap.data().password;
+                } else {
+                    // Otomatis buatkan dokumen pengaturan admin dengan sandi default "admin" jika belum ada di database
+                    await setDoc(adminRef, { password: "admin" }, { merge: true });
+                }
 
-                    html += `<div class="list-item"><div class="list-text">${teks}</div>
-                             <button class="btn-small" onclick="hapusSoal('${gameId}', '${id}')">Hapus 🗑️</button></div>`;
-                });
-                container.innerHTML = html;
-            } catch (e) { 
-                console.error(e); // Biar gampang ngecek error di console browser
-                container.innerHTML = "<p style='color:red;'>Gagal memuat daftar soal.</p>"; 
+                if (input === correctPassword) {
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('appContainer').style.display = 'block';
+                    changeMode(); 
+                } else {
+                    showLoginError();
+                }
+            } catch (e) {
+                // Fallback jika offline/gagal koneksi
+                if (input === "admin") {
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('appContainer').style.display = 'block';
+                    changeMode();
+                } else {
+                    showLoginError();
+                }
             }
+        };
+
+        function showLoginError() {
+            document.getElementById('loginError').style.display = 'block';
+            setTimeout(() => { document.getElementById('loginError').style.display = 'none'; }, 2000);
         }
 
-        window.hapusSoal = async (gameId, docId) => {
-            if(!confirm("Yakin mau menghapus soal ini?")) return;
-            try {
-                await deleteDoc(doc(db, `bank_soal/${gameId}/soal`, docId));
-                showToast("Soal dihapus! 🗑️", "success");
-                muatDaftarSoal(gameId);
-            } catch (e) { showToast("Gagal menghapus soal!", "error"); }
+        window.changeMode = () => {
+            currentMode = document.getElementById('modeSelect').value;
+            cancelEdit();
+            renderForm();
+            loadData();
         };
 
-        async function saveToDB(gameId, data) {
-            try {
-                await addDoc(collection(db, `bank_soal/${gameId}/soal`), data);
-                showToast("Berhasil! Soal masuk database. ✅", "success");
-                document.querySelectorAll('input[type="text"], textarea').forEach(el => el.value = '');
-                muatDaftarSoal(gameId);
-            } catch (e) { showToast("Gagal menyimpan soal! ❌", "error"); }
+        function renderForm() {
+            const formDiv = document.getElementById('dynamicForm');
+            let html = '';
+
+            if (currentMode === 'top_survei') {
+                html = `
+                    <label>Pertanyaan Survei:</label>
+                    <input type="text" id="ts_pertanyaan" placeholder="Contoh: Hal yang sering lupa dibawa...">
+                    <label>Jawaban & Poin (Maks 10):</label>
+                    <div id="ts_answers_container">
+                        <div class="ts-answer-row"><input type="text" class="ts-ans-teks" placeholder="Jawaban 1"><input type="number" class="ts-ans-poin" placeholder="Poin"></div>
+                        <div class="ts-answer-row"><input type="text" class="ts-ans-teks" placeholder="Jawaban 2"><input type="number" class="ts-ans-poin" placeholder="Poin"></div>
+                    </div>
+                    <button style="background:#eee; color:#333; border:1px solid #ccc; border-radius:8px; padding:6px 12px; margin-bottom:10px;" onclick="addTSRow()">+ Tambah Baris Jawaban</button>
+                `;
+            } 
+            else if (currentMode === 'satu_hati') {
+                html = `
+                    <label>Kategori / Prompt Satu Hati:</label>
+                    <input type="text" id="sh_prompt" placeholder="Contoh: Nama merk air mineral...">
+                    <p style="font-size:12px; color:#888;">*Tidak butuh kunci jawaban, pemain harus menyamakan jawaban dengan timnya.</p>
+                `;
+            } 
+            else if (currentMode === 'beda_hati') {
+                html = `
+                    <label>Kategori / Prompt Beda Hati:</label>
+                    <input type="text" id="bh_prompt" placeholder="Contoh: Nama planet di tata surya...">
+                    <label>Kunci Jawaban Valid (Pisahkan dengan koma):</label>
+                    <textarea id="bh_jawaban" placeholder="Bumi, Mars, Venus, Jupiter, Saturnus..."></textarea>
+                    <p style="font-size:12px; color:#888;">*Pemain harus menjawab dari daftar ini, tapi tidak boleh sama dengan teman setimnya.</p>
+                `;
+            }
+            else if (currentMode === 'sambung_lirik') {
+                html = `
+                    <label>Lirik Lagu Lengkap:</label>
+                    <textarea id="sl_lirik" placeholder="Contoh: Balonku ada lima rupa-rupa warnanya..."></textarea>
+                    <p style="font-size:12px; color:#888;">*Sistem otomatis memotong dan menyembunyikan 1 kata dari lirik yang panjangnya cukup.</p>
+                `;
+            } 
+            else if (currentMode === 'estafet_bom') {
+                html = `
+                    <label>Kategori Estafet Bom:</label>
+                    <input type="text" id="eb_kategori" placeholder="Contoh: Nama hewan berkaki empat...">
+                    <label>Kunci Jawaban Valid (Pisahkan dengan koma):</label>
+                    <textarea id="eb_jawaban" placeholder="Kucing, Anjing, Sapi, Kambing, Kuda..."></textarea>
+                `;
+            }
+            formDiv.innerHTML = html;
         }
 
-        window.simpanTopSurvei = () => {
-            const pert = document.getElementById('tsPertanyaan').value.trim();
-            const rawJawaban = document.getElementById('tsJawaban').value;
-            if(!pert || !rawJawaban) return showToast("Mohon isi pertanyaan dan jawabannya!", "error");
-            const answers = rawJawaban.split(',').map(s => s.trim()).filter(s => s !== "");
-            if(answers.length === 0) return showToast("Format jawaban salah!", "error");
-            const n = answers.length; const sum = (n * (n + 1)) / 2;
-            const jawabanData = answers.map((ans, index) => { return { teks: ans.toLowerCase(), poin: Math.round((100 / sum) * (n - index)) }; });
-            saveToDB('top_survei', { pertanyaan: pert, jawaban: jawabanData });
+        window.addTSRow = () => {
+            const container = document.getElementById('ts_answers_container');
+            const row = document.createElement('div');
+            row.className = 'ts-answer-row';
+            row.innerHTML = `<input type="text" class="ts-ans-teks" placeholder="Jawaban Baru"><input type="number" class="ts-ans-poin" placeholder="Poin"> <button onclick="this.parentElement.remove()" style="padding:10px; background:var(--danger); color:white;">X</button>`;
+            container.appendChild(row);
         };
 
-        window.simpanSatuHati = () => {
-            const prompt = document.getElementById('shPrompt').value.trim();
-            if(!prompt) return showToast("Kategori tidak boleh kosong!", "error");
-            saveToDB('satu_hati', { prompt: prompt });
+        window.cancelEdit = () => {
+            currentEditId = null;
+            document.getElementById('formTitle').innerText = "Tambah Soal Baru";
+            document.getElementById('btnSave').innerText = "Simpan Soal";
+            document.getElementById('btnSave').style.backgroundColor = "var(--primary)";
+            document.getElementById('btnCancel').style.display = "none";
+            renderForm(); 
         };
 
-        window.simpanSambungLirik = () => {
-            const lirikLengkap = document.getElementById('slLirik').value.trim();
-            if(!lirikLengkap) return showToast("Liriknya jangan dikosongin dong!", "error");
-            saveToDB('sambung_lirik', { lirik_lengkap: lirikLengkap });
+        window.saveData = async () => {
+            let data = { is_active: true }; 
+            
+            if (currentMode === 'top_survei') {
+                const pertanyaan = document.getElementById('ts_pertanyaan').value.trim();
+                if(!pertanyaan) return alert("Isi pertanyaan!");
+                const teksInputs = document.querySelectorAll('.ts-ans-teks');
+                const poinInputs = document.querySelectorAll('.ts-ans-poin');
+                let jawaban = [];
+                for(let i=0; i<teksInputs.length; i++) {
+                    let teks = teksInputs[i].value.trim();
+                    let poin = parseInt(poinInputs[i].value);
+                    if(teks && poin) jawaban.push({ teks, poin });
+                }
+                if(jawaban.length === 0) return alert("Minimal isi 1 jawaban beserta poin!");
+                jawaban.sort((a,b) => b.poin - a.poin); 
+                data.pertanyaan = pertanyaan; data.jawaban = jawaban;
+            } 
+            else if (currentMode === 'satu_hati') {
+                data.prompt = document.getElementById('sh_prompt').value.trim();
+                if(!data.prompt) return alert("Isi prompt!");
+            } 
+            else if (currentMode === 'beda_hati') {
+                data.prompt = document.getElementById('bh_prompt').value.trim();
+                const rawJawaban = document.getElementById('bh_jawaban').value;
+                data.jawaban_valid = rawJawaban.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
+                if(!data.prompt || data.jawaban_valid.length === 0) return alert("Isi prompt & minimal 1 jawaban!");
+            }
+            else if (currentMode === 'sambung_lirik') {
+                data.lirik_lengkap = document.getElementById('sl_lirik').value.trim();
+                if(!data.lirik_lengkap) return alert("Isi lirik lagu!");
+            } 
+            else if (currentMode === 'estafet_bom') {
+                data.kategori = document.getElementById('eb_kategori').value.trim();
+                const rawJawaban = document.getElementById('eb_jawaban').value;
+                data.jawaban_benar = rawJawaban.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
+                if(!data.kategori || data.jawaban_benar.length === 0) return alert("Isi kategori & minimal 1 jawaban!");
+            }
+
+            try {
+                if (currentEditId) {
+                    data.is_active = currentDataCache[currentEditId].is_active !== false; 
+                    await updateDoc(doc(db, `bank_soal/${currentMode}/soal`, currentEditId), data);
+                    alert("Berhasil di-update!");
+                } else {
+                    await addDoc(collection(db, `bank_soal/${currentMode}/soal`), data);
+                    alert("Berhasil disimpan!");
+                }
+                cancelEdit();
+            } catch (error) {
+                alert("Gagal menyimpan: " + error.message);
+            }
         };
 
-        window.simpanEstafetBom = () => {
-            const kategori = document.getElementById('ebKategori').value.trim();
-            const rawJawaban = document.getElementById('ebJawaban').value.trim();
-            if(!kategori || !rawJawaban) return showToast("Isi kategori dan daftar jawaban valid!", "error");
-            const answers = rawJawaban.split(',').map(s => s.trim().toLowerCase()).filter(s => s !== "");
-            if(answers.length === 0) return showToast("Format daftar jawaban salah!", "error");
-            saveToDB('estafet_bom', { kategori: kategori, jawaban_benar: answers });
+        window.editData = (id) => {
+            currentEditId = id;
+            const data = currentDataCache[id];
+            
+            document.getElementById('formTitle').innerText = "✏️ Edit Soal";
+            document.getElementById('btnSave').innerText = "Update Soal";
+            document.getElementById('btnSave').style.backgroundColor = "#f39c12";
+            document.getElementById('btnCancel').style.display = "block";
+            
+            renderForm(); 
+            
+            setTimeout(() => {
+                if (currentMode === 'top_survei') {
+                    document.getElementById('ts_pertanyaan').value = data.pertanyaan;
+                    const container = document.getElementById('ts_answers_container');
+                    container.innerHTML = '';
+                    data.jawaban.forEach(j => {
+                        const row = document.createElement('div');
+                        row.className = 'ts-answer-row';
+                        row.innerHTML = `<input type="text" class="ts-ans-teks" value="${j.teks}"><input type="number" class="ts-ans-poin" value="${j.poin}"> <button onclick="this.parentElement.remove()" style="padding:10px; background:var(--danger); color:white;">X</button>`;
+                        container.appendChild(row);
+                    });
+                } 
+                else if (currentMode === 'satu_hati') {
+                    document.getElementById('sh_prompt').value = data.prompt;
+                } 
+                else if (currentMode === 'beda_hati') {
+                    document.getElementById('bh_prompt').value = data.prompt;
+                    document.getElementById('bh_jawaban').value = (data.jawaban_valid || []).join(', ');
+                }
+                else if (currentMode === 'sambung_lirik') {
+                    document.getElementById('sl_lirik').value = data.lirik_lengkap || data.lirik_tampil || '';
+                } 
+                else if (currentMode === 'estafet_bom') {
+                    document.getElementById('eb_kategori').value = data.kategori;
+                    document.getElementById('eb_jawaban').value = (data.jawaban_benar || []).join(', ');
+                }
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
         };
+
+        window.toggleActive = async (id, isChecked) => {
+            try {
+                await updateDoc(doc(db, `bank_soal/${currentMode}/soal`, id), { is_active: isChecked });
+            } catch (error) {
+                alert("Gagal merubah status: " + error.message);
+            }
+        };
+
+        window.deleteData = async (id) => {
+            if(!confirm("Yakin hapus data ini?")) return;
+            try {
+                if(currentEditId === id) cancelEdit();
+                await deleteDoc(doc(db, `bank_soal/${currentMode}/soal`, id));
+            } catch (error) {
+                alert("Gagal hapus!");
+            }
+        };
+
+        function loadData() {
+            if (unsubscribe) unsubscribe();
+            const listDiv = document.getElementById('soalList');
+            listDiv.innerHTML = '<p>Memuat...</p>';
+
+            unsubscribe = onSnapshot(collection(db, `bank_soal/${currentMode}/soal`), (snapshot) => {
+                listDiv.innerHTML = '';
+                currentDataCache = {};
+                
+                if (snapshot.empty) {
+                    listDiv.innerHTML = '<p style="color:#888; text-align:center;">Belum ada soal tersimpan di mode ini.</p>';
+                    return;
+                }
+
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const id = docSnap.id;
+                    currentDataCache[id] = data;
+                    
+                    const isActive = data.is_active !== false; 
+                    const statusClass = isActive ? "" : "inactive-item";
+
+                    let contentHTML = '';
+                    if (currentMode === 'top_survei') {
+                        let ansStr = (data.jawaban || []).map(j => `${j.teks} (${j.poin})`).join(', ');
+                        contentHTML = `<strong>${data.pertanyaan}</strong><div style="font-size:13px; color:#666; margin-top:5px;">Jawaban: ${ansStr}</div>`;
+                    } else if (currentMode === 'satu_hati' || currentMode === 'beda_hati') {
+                        contentHTML = `<strong>${data.prompt}</strong>`;
+                        if(currentMode === 'beda_hati') contentHTML += `<div style="font-size:13px; color:#666; margin-top:5px; word-wrap:break-word;">Kunci: ${(data.jawaban_valid || []).join(', ')}</div>`;
+                    } else if (currentMode === 'sambung_lirik') {
+                        contentHTML = `<strong>${data.lirik_lengkap || data.lirik_tampil || ''}</strong>`;
+                    } else if (currentMode === 'estafet_bom') {
+                        contentHTML = `<strong>${data.kategori}</strong><div style="font-size:13px; color:#666; margin-top:5px; word-wrap:break-word;">Kunci: ${(data.jawaban_benar || []).join(', ')}</div>`;
+                    }
+
+                    const itemHTML = `
+                        <div class="list-item ${statusClass}">
+                            <div class="item-header">
+                                <div style="flex:1; padding-right:10px;">${contentHTML}</div>
+                                <div class="item-actions">
+                                    <span class="toggle-label">${isActive ? 'On' : 'Off'}</span>
+                                    <label class="switch">
+                                        <input type="checkbox" onchange="toggleActive('${id}', this.checked)" ${isActive ? 'checked' : ''}>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                                <button class="btn-edit" onclick="editData('${id}')">✏️ Edit</button>
+                                <button class="btn-danger" style="border-radius:8px; padding:8px 12px;" onclick="deleteData('${id}')">🗑️ Hapus</button>
+                            </div>
+                        </div>
+                    `;
+                    listDiv.innerHTML += itemHTML;
+                });
+            });
+        }
     </script>
 </body>
 </html>

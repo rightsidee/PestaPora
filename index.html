@@ -29,7 +29,7 @@
         
         h1, h2, h3 { color: #2d6a4f; margin-top: 0; font-weight: 700; letter-spacing: 1px; }
         
-        input {
+        input[type="text"], input[type="number"] {
             width: 100%; padding: 15px; margin: 10px 0; border-radius: 12px;
             border: 2px solid #ddd; font-size: 16px; font-family: 'Fredoka', sans-serif;
             box-sizing: border-box; outline: none; transition: 0.2s; font-weight: 600;
@@ -61,7 +61,16 @@
         .admin-lock:hover { transform: scale(1.2); }
         
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 100; }
-        .modal-content { background: white; padding: 30px; border-radius: 20px; width: 85%; max-width: 320px; text-align: center; border: 4px solid var(--primary); }
+        .modal-content { background: white; padding: 30px; border-radius: 20px; width: 85%; max-width: 320px; text-align: center; border: 4px solid var(--primary); max-height: 80vh; overflow-y: auto; }
+
+        .checkbox-container { display: block; position: relative; padding-left: 35px; margin-bottom: 12px; cursor: pointer; font-size: 16px; user-select: none; text-align: left; }
+        .checkbox-container input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
+        .checkmark { position: absolute; top: 0; left: 0; height: 20px; width: 20px; background-color: #eee; border-radius: 5px; border: 2px solid #ccc; }
+        .checkbox-container:hover input ~ .checkmark { background-color: #ccc; }
+        .checkbox-container input:checked ~ .checkmark { background-color: var(--primary); border-color: #2d6a4f; }
+        .checkmark:after { content: ""; position: absolute; display: none; }
+        .checkbox-container input:checked ~ .checkmark:after { display: block; }
+        .checkbox-container .checkmark:after { left: 6px; top: 2px; width: 5px; height: 10px; border: solid #2d6a4f; border-width: 0 3px 3px 0; transform: rotate(45deg); }
     </style>
 </head>
 <body>
@@ -97,13 +106,15 @@
         </div>
         <p style="font-size:12px; color:#888; font-weight:bold; margin-top:10px;" id="drag-hint"></p>
 
+        <!-- Pilihan Daftar Game kini Terbuka Untuk Semua -->
+        <button class="btn-primary" style="margin-top:20px; background:#ffd32a; box-shadow: 0 6px 0px #d1aa11; color:#333;" onclick="goToGameSelection()">🎮 Daftar Game & Panduan</button>
+
         <div id="hostControls" style="display: none; margin-top:15px;">
             <button class="btn-secondary" onclick="randomizeTeams()">🎲 Acak Tim</button>
-            <button onclick="goToGameSelection()">🎮 Pilih Game</button>
         </div>
         
         <div id="playerControls" style="display: none; margin-top:15px;">
-            <p style="font-weight: bold; color: #2d6a4f;">Menunggu Host memulai...</p>
+            <p style="font-weight: bold; color: #2d6a4f;">Menunggu Host memulai permainan...</p>
         </div>
 
         <hr style="border-top: 2px dashed #eee; margin: 20px 0;">
@@ -113,17 +124,20 @@
         </div>
     </div>
 
-    <!-- Halaman 3: Pemilihan Game (Hanya Kontrol Host) -->
+    <!-- Halaman 3: Pemilihan Game (Bisa diakses lokal oleh semua) -->
     <div id="gameSelectionScreen" class="container">
-        <h2>Pilih Permainan</h2>
-        <button onclick="showTutorial('party')">🎊 Mode Party</button>
+        <h2>Daftar Permainan</h2>
+        <p style="font-size:13px; color:#888; margin-top:-10px; margin-bottom:15px;">Pilih untuk melihat panduan. Hanya Host yang bisa memulai.</p>
+        
+        <button onclick="showTutorial('party')">🎊 Mode Party (Beruntun)</button>
         <button class="btn-secondary" onclick="showTutorial('top_survei')">📊 Top Survei</button>
         <button class="btn-secondary" onclick="showTutorial('satu_hati')">💞 Satu Hati</button>
+        <button class="btn-secondary" onclick="showTutorial('beda_hati')">💔 Beda Hati</button>
         <button class="btn-secondary" onclick="showTutorial('sambung_lirik')">🎤 Sambung Lirik</button>
         <button class="btn-secondary" onclick="showTutorial('estafet_bom')">💣 Estafet Bom</button>
         
-        <hr style="border-top: 2px dashed #eee; margin: 25px 0;" id="hrSelectionBack">
-        <button id="btnSelectionBack" class="btn-danger" style="background-color: #ffb3ba; color: white;" onclick="backToLobby()">🔙 Kembali ke Ruang Tunggu</button>
+        <hr style="border-top: 2px dashed #eee; margin: 25px 0;">
+        <button class="btn-danger" style="background-color: #ffb3ba; color: white;" onclick="backToLobby()">🔙 Kembali ke Ruang Tunggu</button>
     </div>
 
     <!-- Halaman 4: Arena Bermain -->
@@ -132,20 +146,19 @@
         <div id="gameArena"></div>
     </div>
 
-    <!-- Pop Up Tutorial (Tersinkronisasi Penuh ke Seluruh Pemain) -->
+    <!-- Pop Up Tutorial (Lokal) -->
     <div id="tutorialModal" class="modal">
         <div class="modal-content">
             <h2 id="tutorialTitle">Judul Game</h2>
-            <p id="tutorialText" style="font-size: 16px; color: #666; margin-bottom: 20px;"></p>
+            <div id="tutorialText" style="font-size: 16px; color: #666; margin-bottom: 20px;"></div>
             <button id="btnStartGame" onclick="startGame()">Mulai Game</button>
-            <button id="btnCloseTutorial" class="btn-danger" style="margin-top: 10px;" onclick="closeTutorial()">Kembali</button>
+            <button class="btn-danger" style="margin-top: 10px;" onclick="closeTutorial()">Tutup Panduan</button>
         </div>
     </div>
 
     <!-- Firebase SDK & Scripts -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        // IMPORT runTransaction UNTUK MENCEGAH RACE CONDITION
         import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, deleteField, collection, getDocs, arrayUnion, increment, runTransaction } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -170,11 +183,11 @@
         window.mainInterval = null;
         window.cdInterval = null;
         window.tickInterval = null;
-        
         window.prevTerjawab = 0;
         window.prevStateTahap = "";
         window.hostIdData = "";
         window.isProcessingNextGame = false;
+        window.currentGameStateObj = null;
 
         // SFX GENERATOR
         window.playSound = (type) => {
@@ -299,16 +312,54 @@
             const roomRef = doc(db, "rooms", currentRoom);
             const snap = await getDoc(roomRef);
             const state = snap.data().game_state;
-            if (state.mode === 'top_survei') {
-                await updateDoc(roomRef, { "game_state.tahap": "hasil" });
-            } else if (state.mode === 'sambung_lirik') {
-                await updateDoc(roomRef, { "game_state.tahap": "hasil", "game_state.pemenang_ronde": "Dihentikan Host", "game_state.tim_pemenang": "none" });
-            }
+            if (state.mode === 'top_survei') { await updateDoc(roomRef, { "game_state.tahap": "hasil" }); } 
+            else if (state.mode === 'satu_hati') { await cekHasilSH(); }
+            else if (state.mode === 'beda_hati') { await cekHasilBH(); }
+            else if (state.mode === 'sambung_lirik') { await updateDoc(roomRef, { "game_state.tahap": "hasil", "game_state.pemenang_ronde": "Dihentikan Host", "game_state.tim_pemenang": "none" }); }
         };
 
-        window.backToLobby = async () => { await updateDoc(doc(db, "rooms", currentRoom), { status: "waiting", party_mode: false }); };
+        // Navigasi UI Lokal
+        window.goToGameSelection = () => { showScreen('gameSelectionScreen'); };
+        window.backToLobby = () => { showScreen('lobbyScreen'); };
 
-        // TOUCH DRAG & DROP
+        window.showTutorial = (mode) => {
+            selectedGameMode = mode;
+            const titles = { top_survei: "Top Survei 📊", party: "Mode Party 🎉", satu_hati: "Satu Hati 💞", beda_hati: "Beda Hati 💔", sambung_lirik: "Sambung Lirik 🎤", estafet_bom: "Estafet Bom 💣" };
+            const desc = { 
+                party: "Mainkan beberapa game secara estafet berurutan tanpa kembali ke menu!", 
+                top_survei: "Tebak jawaban paling populer di survei.", 
+                satu_hati: "Ketik jawaban yang sama persis dengan teman setimmu.", 
+                beda_hati: "Jawab dari kata valid di kamus, TAPI jawaban tidak boleh sama dengan teman setimmu! Unik = Poin.",
+                sambung_lirik: "Rebutan ngetik kata yang hilang.", 
+                estafet_bom: "Jawab cepat sebelum bom meledak!" 
+            };
+            
+            document.getElementById('tutorialTitle').innerText = titles[mode] || mode;
+            
+            let extraHTML = '';
+            // Checklist Kustomisasi Party (Hanya untuk Host)
+            if (mode === 'party' && isHost) {
+                extraHTML = `
+                <div id="partyChecklist" style="text-align:left; margin-top:15px; background:#f0fbf4; border: 2px dashed var(--primary); padding:15px; border-radius:10px;">
+                    <strong style="color:var(--text); display:block; margin-bottom:10px;">Pilih game untuk dimasukkan ke antrean:</strong>
+                    <label class="checkbox-container">Top Survei <input type="checkbox" value="top_survei" checked><span class="checkmark"></span></label>
+                    <label class="checkbox-container">Satu Hati <input type="checkbox" value="satu_hati" checked><span class="checkmark"></span></label>
+                    <label class="checkbox-container">Beda Hati <input type="checkbox" value="beda_hati" checked><span class="checkmark"></span></label>
+                    <label class="checkbox-container">Sambung Lirik <input type="checkbox" value="sambung_lirik" checked><span class="checkmark"></span></label>
+                    <label class="checkbox-container">Estafet Bom <input type="checkbox" value="estafet_bom" checked><span class="checkmark"></span></label>
+                </div>`;
+            }
+
+            document.getElementById('tutorialText').innerHTML = (desc[mode] || "") + extraHTML;
+            
+            // Tombol mulai game disembunyikan untuk pemain biasa
+            document.getElementById('btnStartGame').style.display = isHost ? 'inline-block' : 'none';
+            document.getElementById('tutorialModal').style.display = 'flex';
+        };
+
+        window.closeTutorial = () => { document.getElementById('tutorialModal').style.display = 'none'; };
+
+        // TOUCH DRAG & DROP UNTUK TIM
         window.allowDrop = (ev) => ev.preventDefault();
         window.drag = (ev, id) => ev.dataTransfer.setData("id", id);
         window.drop = async (ev, team) => {
@@ -316,14 +367,12 @@
             const id = ev.dataTransfer.getData("id");
             if (isHost && id) await updateDoc(doc(db, "rooms", currentRoom), { [`players.${id}.tim`]: team });
         };
-
         function setupTouchDragAndDrop() {
             let draggedId = null;
             document.addEventListener("touchstart", (e) => {
                 const item = e.target.closest(".player-item");
                 if (item && isHost) { draggedId = item.getAttribute("data-player-id"); }
             }, {passive: true});
-
             document.addEventListener("touchend", async (e) => {
                 if (!draggedId || !isHost) return;
                 const touch = e.changedTouches[0];
@@ -356,25 +405,14 @@
                 document.getElementById('btnTakeoverLobby').style.display = !isHost ? 'block' : 'none';
                 document.getElementById('drag-hint').innerText = isHost ? "💡 Host bisa geser (drag/sentuh) nama pemain untuk memindahkan tim." : "Menunggu Host membagi tim...";
 
-                // SINKRONISASI FULL POPUP SELEKSI GAME / TUTORIAL
-                if (isHost) {
-                    document.getElementById('btnSelectionBack').style.display = 'block';
-                    document.getElementById('hrSelectionBack').style.display = 'block';
-                } else {
-                    document.getElementById('btnSelectionBack').style.display = 'none';
-                    document.getElementById('hrSelectionBack').style.display = 'none';
-                }
-
+                // Handle global status "waiting" vs "playing"
                 if(data.status === "waiting") {
-                    showScreen('lobbyScreen');
                     document.getElementById('tutorialModal').style.display = 'none';
-                }
-                else if(data.status === "selecting_game") {
-                    showScreen('gameSelectionScreen');
-                    document.getElementById('tutorialModal').style.display = 'none';
-                }
-                else if(data.status === "tutorial") {
-                    showTutorialScreen(data.mode);
+                    // Jika user sedang lihat daftar game, biarkan (jangan paksa ke lobby)
+                    const selScreen = document.getElementById('gameSelectionScreen');
+                    if (!selScreen.classList.contains('active')) {
+                        showScreen('lobbyScreen');
+                    }
                 }
                 else if(data.status === "playing") {
                     document.getElementById('tutorialModal').style.display = 'none';
@@ -410,32 +448,8 @@
             await updateDoc(doc(db, "rooms", currentRoom), updates);
         };
 
-        window.goToGameSelection = async () => { await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game", party_mode: false }); };
-        window.showTutorial = async (gameId) => { selectedGameMode = gameId; await updateDoc(doc(db, "rooms", currentRoom), { status: "tutorial", mode: gameId }); };
-
-        window.showTutorialScreen = (mode) => {
-            const titles = { top_survei: "Top Survei 📊", party: "Mode Party 🎉", satu_hati: "Satu Hati 💞", sambung_lirik: "Sambung Lirik 🎤", estafet_bom: "Estafet Bom 💣" };
-            const desc = { party: "Mainkan 4 game secara estafet berurutan!", top_survei: "Tebak jawaban paling populer.", satu_hati: "Ketik jawaban yang sama persis dengan teman setimmu.", sambung_lirik: "Rebutan ngetik kata yang hilang.", estafet_bom: "Jawab cepat sebelum bom meledak!" };
-            document.getElementById('tutorialTitle').innerText = titles[mode] || mode;
-            document.getElementById('tutorialText').innerText = desc[mode] || "";
-            
-            const btnStart = document.getElementById('btnStartGame');
-            const btnClose = document.getElementById('btnCloseTutorial');
-            if (isHost) {
-                btnStart.style.display = 'inline-block';
-                btnClose.style.display = 'inline-block';
-                btnClose.innerText = "Kembali";
-                btnClose.onclick = closeTutorial;
-            } else {
-                btnStart.style.display = 'none';
-                btnClose.style.display = 'none'; 
-            }
-            document.getElementById('tutorialModal').style.display = 'flex';
-        };
-
-        window.closeTutorial = async () => { if(isHost) await updateDoc(doc(db, "rooms", currentRoom), { status: "selecting_game" }); };
-
         window.startGame = async () => {
+            if(!isHost) return;
             document.getElementById('tutorialModal').style.display = 'none';
             const roomSnap = await getDoc(doc(db, "rooms", currentRoom));
             const players = roomSnap.data().players;
@@ -444,7 +458,12 @@
             let firstMode = selectedGameMode;
             
             if (selectedGameMode === 'party') {
-                let q = ['top_survei', 'satu_hati', 'sambung_lirik', 'estafet_bom'].sort(() => Math.random() - 0.5);
+                let selectedGames = [];
+                document.querySelectorAll('#partyChecklist input:checked').forEach(el => selectedGames.push(el.value));
+                
+                if(selectedGames.length === 0) { alert("Pilih minimal 1 game untuk antrean Party!"); return; }
+                
+                let q = selectedGames.sort(() => Math.random() - 0.5);
                 roomUpdates.party_mode = true;
                 roomUpdates.party_queue = q;
                 roomUpdates.party_skor_merah = 0;
@@ -457,12 +476,27 @@
             await startRound(firstMode, 1, []); 
         };
 
+        // MULAI RONDE & FILTER SOAL AKTIF DARI DATABASE ADMIN
         window.startRound = async (mode, rondeNum, soalTerpakai) => {
             const qSnap = await getDocs(collection(db, `bank_soal/${mode}/soal`));
-            if(qSnap.empty) { alert(`Bank soal ${mode} kosong!`); if (isHost) goToGameSelection(); return; }
             
-            let availableDocs = qSnap.docs.filter(d => !soalTerpakai.includes(d.id));
-            if(availableDocs.length === 0) { availableDocs = qSnap.docs; soalTerpakai = []; }
+            // Filter hanya pertanyaan yang aktif (is_active !== false) dan belum terpakai
+            let availableDocs = qSnap.docs.filter(d => {
+                const data = d.data();
+                return data.is_active !== false && !soalTerpakai.includes(d.id);
+            });
+            
+            if(availableDocs.length === 0) { 
+                // Jika habis semua (atau kosong total), ulangi bank soal
+                availableDocs = qSnap.docs.filter(d => d.data().is_active !== false);
+                soalTerpakai = []; 
+                if(availableDocs.length === 0) {
+                    alert(`Bank soal ${mode} kosong atau belum diaktifkan!`); 
+                    if (isHost) updateDoc(doc(db, "rooms", currentRoom), { status: "waiting" }); 
+                    return; 
+                }
+            }
+            
             const randomDoc = availableDocs[Math.floor(Math.random() * availableDocs.length)];
             const data = randomDoc.data();
             const nextSoalTerpakai = [...soalTerpakai, randomDoc.id];
@@ -483,6 +517,8 @@
                 gameState.pertanyaan = data.pertanyaan; gameState.jawaban = jwbList; gameState.terjawab = [];
             } else if (mode === 'satu_hati') {
                 gameState.prompt = data.prompt; gameState.jawaban_pemain = {};
+            } else if (mode === 'beda_hati') {
+                gameState.prompt = data.prompt; gameState.jawaban_valid = data.jawaban_valid || []; gameState.jawaban_pemain = {};
             } else if (mode === 'sambung_lirik') {
                 let lirikMentah = data.lirik_lengkap || data.lirik_tampil || "bisa saja bencana";
                 const words = lirikMentah.split(/\s+/);
@@ -519,7 +555,6 @@
             else { await startRound(state.mode, state.ronde_sekarang + 1, state.soal_terpakai); }
         };
 
-        // FIX BUG: SKOR PARTY BERLIPAT GANDA (MENGGUNAKAN TRANSACTION UNTUK MENGUNCI PENJUMLAHAN)
         window.nextGame = async () => {
             if (window.isProcessingNextGame) return;
             window.isProcessingNextGame = true;
@@ -548,10 +583,10 @@
                 if (currIdx !== -1 && currIdx < q.length - 1) {
                     await startRound(q[currIdx + 1], 1, []);
                 } else {
-                    await updateDoc(roomRef, { status: "selecting_game", party_mode: false });
+                    await updateDoc(roomRef, { status: "waiting", party_mode: false });
                 }
             } else { 
-                await updateDoc(roomRef, { status: "selecting_game" }); 
+                await updateDoc(roomRef, { status: "waiting" }); 
             }
             window.isProcessingNextGame = false;
         };
@@ -563,6 +598,7 @@
             const isParty = data.party_mode;
             
             if (!state) return;
+            window.currentGameStateObj = state; // cache local untuk validasi
 
             let activeEl = document.activeElement;
             let savedId = activeEl ? activeEl.id : null;
@@ -638,7 +674,7 @@
 
             const highlightCard = (label, text) => `<div style="background: white; border: 4px solid var(--primary); padding: 20px; border-radius: 16px; font-size: 22px; color: #2d6a4f; box-shadow: 0 8px 15px rgba(168, 230, 207, 0.4); margin-bottom: 20px; line-height: 1.4; font-weight: 700;"><div style="font-size:13px; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">${label}</div>${text}</div>`;
 
-            const hostBtn = isHost ? `<hr style="border-top: 2px dashed #eee; margin: 25px 0;"><button class="btn-danger" style="background-color:#ffb3ba; color:white; margin-bottom:5px;" onclick="resetRoom()">🔄 Berhenti & Ke Ruang Tunggu</button>` : '';
+            const hostBtn = isHost ? `<hr style="border-top: 2px dashed #eee; margin: 25px 0;"><button class="btn-danger" style="background-color:#ffb3ba; color:white; margin-bottom:5px;" onclick="resetRoom()">🔄 Berhenti & Ke Menu</button>` : '';
             const hostForceBtn = isHost && state.tahap === "ngetik" ? `<button class="btn-danger" style="background:#ff9f43; color:white; margin-bottom:5px; box-shadow: 0 6px 0px #cc823a;" onclick="forceFinishRound()">⏭️ Paksa Selesai Ronde</button>` : '';
             const hostNextBtn = isHost ? `<button class="btn-secondary" style="background:#2ed573; color:white; border:none; margin-top:20px;" onclick="nextRound()">Lanjut Ronde Berikutnya ➡️</button>` : '';
 
@@ -653,6 +689,7 @@
                         if(isHost) {
                             if(state.mode === 'top_survei') updateDoc(doc(db, "rooms", currentRoom), { "game_state.tahap": "hasil" });
                             else if(state.mode === 'satu_hati') cekHasilSH();
+                            else if(state.mode === 'beda_hati') cekHasilBH();
                             else if(state.mode === 'sambung_lirik') updateDoc(doc(db, "rooms", currentRoom), { "game_state.tahap": "hasil", "game_state.pemenang_ronde": "Waktu Habis!", "game_state.tim_pemenang": "none" });
                         }
                     }
@@ -661,6 +698,7 @@
 
             let htmlArena = '';
 
+            // ================== MODE TOP SURVEI ==================
             if (state.mode === 'top_survei') {
                 title.innerText = `Top Survei 📊 (Ronde ${state.ronde_sekarang}/${state.max_ronde})`;
                 let listItemsHTML = '';
@@ -682,6 +720,8 @@
                     if(isHost && state.terjawab.length === state.jawaban.length) updateDoc(doc(db, "rooms", currentRoom), { "game_state.tahap": "hasil" });
                 } else { htmlArena += `${hostNextBtn}${hostBtn}`; }
             } 
+            
+            // ================== MODE SATU HATI ==================
             else if (state.mode === 'satu_hati') {
                 title.innerText = `Satu Hati 💞 (Ronde ${state.ronde_sekarang}/${state.max_ronde})`;
                 if (state.tahap === "ngetik") {
@@ -703,6 +743,50 @@
                     htmlArena = `${teamReminder}${partySkorHTML}${highlightCard("Kategori Satu Hati", state.prompt)}<div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold; font-size:16px;"><span style="color:white; background:var(--danger); padding:4px 10px; border-radius:8px;">Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:4px 10px; border-radius:8px;">Biru: ${state.skor_biru}</span></div>${hasilHTML}${hostNextBtn}${hostBtn}`;
                 }
             }
+
+            // ================== MODE BEDA HATI (BARU) ==================
+            else if (state.mode === 'beda_hati') {
+                title.innerText = `Beda Hati 💔 (Ronde ${state.ronde_sekarang}/${state.max_ronde})`;
+                if (state.tahap === "ngetik") {
+                    let statusPemain = '<div style="margin:15px 0; text-align:left; background:#fff; padding:12px; border-radius:12px; border:2px solid #eee; font-size:14px;">';
+                    for (const [pId, pData] of Object.entries(data.players)) {
+                        const udhJawab = state.jawaban_pemain[pId] ? '✅ Kunci' : '⏳ Mikir';
+                        statusPemain += `<div style="color:${pData.tim === 'merah' ? 'var(--danger)' : 'var(--accent)'}; font-weight:bold; margin:4px 0;">${pData.nama}: ${udhJawab}</div>`;
+                    }
+                    statusPemain += '</div>';
+                    
+                    let inputHTML = state.jawaban_pemain[myId] ? `<div style="background:var(--secondary); padding:15px; border-radius:12px; font-weight:bold; color:#333; margin-top:15px;">Jawaban: ${state.jawaban_pemain[myId].toUpperCase()} 🔒</div>` : `<input type="text" id="jawabanBH" placeholder="Ketik kata valid (beda dari tim)..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onkeypress="if(event.key === 'Enter') submitBH()"><button onclick="submitBH()">Kunci Jawaban</button>`;
+                    
+                    htmlArena = `${teamReminder}${partySkorHTML}${commonTimerHTML}${highlightCard("Kategori Beda Hati", state.prompt)}<p style="font-size:13px; color:#888; font-weight:bold;">⚠️ Jawab kata/nama valid dari kategori di atas. Jawaban harus BEDA dari teman setimmu!</p>${statusPemain}${inputHTML}${isHost ? `<hr><button class="btn-danger" style="background:#ffb3ba; color:#fff;" onclick="cekHasilBH()">Paksa Buka Jawaban</button>` : ''}${hostBtn}`;
+                } 
+                else if (state.tahap === "hasil") {
+                    // Cek duplikat di client (hanya untuk warna UI)
+                    let pMerah = Object.keys(data.players).filter(k => data.players[k].tim === 'merah');
+                    let pBiru = Object.keys(data.players).filter(k => data.players[k].tim === 'biru');
+                    
+                    const countAns = (teamPlayers) => { let freq = {}; teamPlayers.forEach(id => { let ans = state.jawaban_pemain[id]; if(ans) freq[ans] = (freq[ans]||0)+1; }); return freq; };
+                    let fMerah = countAns(pMerah); let fBiru = countAns(pBiru);
+
+                    let hasilHTML = '<div style="margin:15px 0; text-align:left; background:#fff; padding:12px; border-radius:12px; border:2px solid #eee; font-size:14px;">';
+                    for (const [pId, pData] of Object.entries(data.players)) {
+                        let ans = state.jawaban_pemain[pId];
+                        let freq = pData.tim === 'merah' ? fMerah : fBiru;
+                        
+                        let styleTag = 'color:#333; background:#f0f0f0;';
+                        let labelTambahan = '';
+                        if (!ans) { styleTag = 'color:#888; text-decoration:line-through;'; ans = 'Tidak Jawab'; }
+                        else if (freq[ans] > 1) { styleTag = 'color:white; background:var(--danger);'; labelTambahan = ' 💥 (KEMBAR)'; }
+                        else { styleTag = 'color:#2d6a4f; background:var(--secondary); border: 2px solid #86c4ad;'; labelTambahan = ' ✨ (+50)'; }
+                        
+                        hasilHTML += `<div style="color:${pData.tim === 'merah' ? 'var(--danger)' : 'var(--accent)'}; font-weight:bold; margin-bottom:8px;">${pData.nama}: <span style="${styleTag} padding:4px 8px; border-radius:5px; font-weight:bold;">${ans.toUpperCase()}${labelTambahan}</span></div>`;
+                    }
+                    hasilHTML += '</div>';
+
+                    htmlArena = `${teamReminder}${partySkorHTML}${highlightCard("Kategori Beda Hati", state.prompt)}<div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold; font-size:16px;"><span style="color:white; background:var(--danger); padding:4px 10px; border-radius:8px;">Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:4px 10px; border-radius:8px;">Biru: ${state.skor_biru}</span></div>${hasilHTML}${hostNextBtn}${hostBtn}`;
+                }
+            }
+
+            // ================== MODE SAMBUNG LIRIK ==================
             else if (state.mode === 'sambung_lirik') {
                 title.innerText = `Sambung Lirik 🎤 (Ronde ${state.ronde_sekarang}/${state.max_ronde})`;
                 if (state.tahap === "ngetik") {
@@ -712,9 +796,11 @@
                     const w = state.tim_pemenang === 'merah' ? 'var(--danger)' : (state.tim_pemenang === 'biru' ? 'var(--accent)' : '#ccc');
                     const teksBongkar = state.lirik_tampil.replace('_________', `<span style="color:${w}; text-decoration:underline;">${state.jawaban_benar.toUpperCase()}</span>`);
                     const infoPemenang = state.tim_pemenang !== 'none' ? `<h2 style="margin:0; color:${w};">🎉 ${state.pemenang_ronde} Menang!</h2><p style="margin:5px 0 0 0; color:#555; font-weight:bold;">Tim ${state.tim_pemenang.toUpperCase()} dapat +50 Poin</p>` : `<h2 style="margin:0; color:#888;">Ronde Dihentikan/Waktu Habis!</h2>`;
-                    htmlArena = `${teamReminder}${partySkorHTML}<div style="background: white; border: 4px solid var(--primary); padding: 20px; border-radius: 16px; font-size: 20px; color: #2d6a4f; margin-bottom: 20px; line-height: 1.5; font-weight: 700;">"${teksBongkar}"</div><div style="background:#fff; padding:15px; border-radius:15px; border:3px solid ${w}; margin: 15px 0;">${infoPemenang}</div><div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold; font-size:16px;"><span style="color:white; background:var(--danger); padding:4px 10px; border-radius:8px;">Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:4px 10px; border-radius:8px;">Biru: ${state.skor_biru}</span></div>${hostNextBtn}${hostBtn}`;
+                    htmlArena = `${teamReminder}${partySkorHTML}<div style="background: white; border: 4px solid var(--primary); padding: 20px; border-radius: 16px; font-size: 20px; color: #2d6a4f; margin-bottom: 20px; line-height: 1.5; font-weight: 700;">"${teksBongkar}"</div><div style="background:#fff; padding:15px; border-radius:15px; border:3px solid ${w}; margin: 15px 0;"><center>${infoPemenang}</center></div><div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold; font-size:16px;"><span style="color:white; background:var(--danger); padding:4px 10px; border-radius:8px;">Merah: ${state.skor_merah}</span><span style="color:white; background:var(--accent); padding:4px 10px; border-radius:8px;">Biru: ${state.skor_biru}</span></div>${hostNextBtn}${hostBtn}`;
                 }
             }
+
+            // ================== MODE ESTAFET BOM ==================
             else if (state.mode === 'estafet_bom') {
                 title.innerText = `Estafet Bom 💣 (Ronde ${state.ronde_sekarang}/${state.max_ronde})`;
                 if (state.tahap === "ngetik") {
@@ -765,7 +851,9 @@
             }
         }
 
-        // FIX BUG RACE CONDITION TOP SURVEI (MENGGUNAKAN TRANSACTION)
+        // ================== LOGIKA SUBMIT JAWABAN ==================
+
+        // Top Survei
         window.submitJawaban = async () => {
             const inputEl = document.getElementById('jawabanInput');
             const rawInput = inputEl.value.trim().toLowerCase();
@@ -775,28 +863,19 @@
             try {
                 await runTransaction(db, async (transaction) => {
                     const roomSnap = await transaction.get(roomRef);
-                    const data = roomSnap.data();
-                    const state = data.game_state;
+                    const state = roomSnap.data().game_state;
                     if (state.tahap !== "ngetik") throw "not_ngetik";
 
                     let matchedEntry = null;
-                    for (const j of state.jawaban) {
-                        if (isTypoAllowed(rawInput, j.teks)) {
-                            matchedEntry = j;
-                            break;
-                        }
-                    }
-
+                    for (const j of state.jawaban) { if (isTypoAllowed(rawInput, j.teks)) { matchedEntry = j; break; } }
                     if (!matchedEntry) throw "salah";
                     if (state.terjawab.find(t => t.teks === matchedEntry.teks)) throw "terpakai";
 
-                    const myTeam = data.players[myId].tim;
-                    let newTerjawab = [...state.terjawab, matchedEntry];
-
+                    const myTeam = roomSnap.data().players[myId].tim;
                     transaction.update(roomRef, {
-                        "game_state.terjawab": newTerjawab,
+                        "game_state.terjawab": [...state.terjawab, matchedEntry],
                         [`game_state.skor_${myTeam}`]: (state[`skor_${myTeam}`] || 0) + matchedEntry.poin,
-                        [`players.${myId}.skor_individu`]: (data.players[myId].skor_individu || 0) + matchedEntry.poin
+                        [`players.${myId}.skor_individu`]: (roomSnap.data().players[myId].skor_individu || 0) + matchedEntry.poin
                     });
                 });
                 inputEl.value = '';
@@ -809,13 +888,13 @@
             }
         }
 
+        // Satu Hati
         window.submitSH = async () => {
             const inputEl = document.getElementById('jawabanSH');
             const tebakan = inputEl.value.trim().toLowerCase();
             if(!tebakan) return;
             await updateDoc(doc(db, "rooms", currentRoom), { [`game_state.jawaban_pemain.${myId}`]: tebakan });
         };
-
         window.cekHasilSH = async () => {
             const roomRef = doc(db, "rooms", currentRoom);
             const snap = await getDoc(roomRef);
@@ -833,7 +912,65 @@
             await updateDoc(roomRef, updates);
         };
 
-        // FIX BUG RACE CONDITION SAMBUNG LIRIK (HANYA PENGIRIM TERCEPAT PERTAMA YANG DITERIMA MUTLAK)
+        // Beda Hati
+        window.submitBH = async () => {
+            const inputEl = document.getElementById('jawabanBH');
+            const tebakan = inputEl.value.trim().toLowerCase();
+            if(!tebakan) return;
+            
+            // Cek lokal terhadap kamus sebelum dikirim ke server biar gak wasting poin
+            const state = window.currentGameStateObj;
+            let matched = null;
+            if(state && state.jawaban_valid) {
+                for (const ans of state.jawaban_valid) {
+                    if (isTypoAllowed(tebakan, ans)) { matched = ans; break; }
+                }
+            }
+            if(!matched) {
+                window.playSound('salah');
+                inputEl.value = '❌ Kata tidak ada di kamus!'; inputEl.style.backgroundColor = '#ffcccb';
+                setTimeout(() => { inputEl.value = ''; inputEl.style.backgroundColor = '#fff'; }, 1000);
+                return;
+            }
+            await updateDoc(doc(db, "rooms", currentRoom), { [`game_state.jawaban_pemain.${myId}`]: matched });
+        };
+
+        window.cekHasilBH = async () => {
+            const roomRef = doc(db, "rooms", currentRoom);
+            const snap = await getDoc(roomRef);
+            const data = snap.data(); const state = data.game_state; const players = data.players;
+            
+            const pMerah = Object.keys(players).filter(k => players[k].tim === 'merah');
+            const pBiru = Object.keys(players).filter(k => players[k].tim === 'biru');
+
+            const calculateTeamBHScore = (teamArr) => {
+                let ansCount = {};
+                teamArr.forEach(id => { let ans = state.jawaban_pemain[id]; if (ans) ansCount[ans] = (ansCount[ans] || 0) + 1; });
+                let totalPoints = 0; let indUpdates = {};
+                teamArr.forEach(id => {
+                    let ans = state.jawaban_pemain[id];
+                    // Tambah poin jika jawabannya valid dan kemunculannya cuma 1 kali (unik di timnya)
+                    if (ans && ansCount[ans] === 1) { 
+                        totalPoints += 50; 
+                        indUpdates[`players.${id}.skor_individu`] = increment(50); 
+                    }
+                });
+                return { totalPoints, indUpdates };
+            };
+
+            const resMerah = calculateTeamBHScore(pMerah);
+            const resBiru = calculateTeamBHScore(pBiru);
+
+            let updates = { 
+                "game_state.tahap": "hasil", 
+                "game_state.skor_merah": increment(resMerah.totalPoints), 
+                "game_state.skor_biru": increment(resBiru.totalPoints) 
+            };
+            Object.assign(updates, resMerah.indUpdates, resBiru.indUpdates);
+            await updateDoc(roomRef, updates);
+        };
+
+        // Sambung Lirik
         window.submitSL = async () => {
             const inputEl = document.getElementById('jawabanSL');
             if(!inputEl) return;
@@ -844,20 +981,18 @@
             try {
                 await runTransaction(db, async (transaction) => {
                     const snap = await transaction.get(roomRef);
-                    const data = snap.data();
-                    const state = data.game_state;
-
+                    const state = snap.data().game_state;
                     if (state.tahap !== "ngetik") throw "not_ngetik";
                     if (state.tim_pemenang && state.tim_pemenang !== "none") throw "telat";
                     if (!isTypoAllowed(rawInput, state.jawaban_benar)) throw "salah";
 
-                    const myTeam = data.players[myId].tim;
+                    const myTeam = snap.data().players[myId].tim;
                     transaction.update(roomRef, {
                         "game_state.tahap": "hasil",
-                        "game_state.pemenang_ronde": data.players[myId].nama,
+                        "game_state.pemenang_ronde": snap.data().players[myId].nama,
                         "game_state.tim_pemenang": myTeam,
                         [`game_state.skor_${myTeam}`]: (state[`skor_${myTeam}`] || 0) + 50,
-                        [`players.${myId}.skor_individu`]: (data.players[myId].skor_individu || 0) + 50
+                        [`players.${myId}.skor_individu`]: (snap.data().players[myId].skor_individu || 0) + 50
                     });
                 });
                 inputEl.value = '';
@@ -871,7 +1006,7 @@
             }
         };
 
-        // FIX BUG ESTAFET BOM (MENGGUNAKAN TRANSACTION UNTUK MENUNJUK KORBAN SELANJUTNYA SECARA AMAN)
+        // Estafet Bom
         window.submitEB = async () => {
             const inputEl = document.getElementById('jawabanEB');
             if(!inputEl) return;
@@ -882,24 +1017,14 @@
             try {
                 await runTransaction(db, async (transaction) => {
                     const snap = await transaction.get(roomRef);
-                    const data = snap.data();
-                    const state = data.game_state;
-
+                    const data = snap.data(); const state = data.game_state;
                     if (state.tahap !== "ngetik" || state.bom_holder !== myId) throw "bukan_giliran";
 
                     let matchedCanonical = null;
                     if (state.jawaban_benar && state.jawaban_benar.length > 0) {
-                        for (const ans of state.jawaban_benar) {
-                            if (isTypoAllowed(rawInput, ans)) {
-                                matchedCanonical = ans;
-                                break;
-                            }
-                        }
+                        for (const ans of state.jawaban_benar) { if (isTypoAllowed(rawInput, ans)) { matchedCanonical = ans; break; } }
                     }
-
-                    if (!matchedCanonical || state.terjawab.includes(matchedCanonical)) {
-                        throw "salah_terpakai";
-                    }
+                    if (!matchedCanonical || state.terjawab.includes(matchedCanonical)) throw "salah_terpakai";
 
                     const targetTeam = data.players[myId].tim === 'merah' ? 'biru' : 'merah';
                     const musuh = Object.keys(data.players).filter(id => data.players[id].tim === targetTeam);
@@ -909,14 +1034,11 @@
                     let availableMusuh = musuh.filter(m => !history.includes(m));
                     if (availableMusuh.length === 0) { availableMusuh = musuh; history = []; }
                     const targetLempar = availableMusuh.length > 0 ? availableMusuh[Math.floor(Math.random() * availableMusuh.length)] : myId;
-                    
-                    let newHistory = [...history, targetLempar];
-                    let newTerjawab = [...state.terjawab, matchedCanonical];
 
                     transaction.update(roomRef, {
                         "game_state.bom_holder": targetLempar,
-                        "game_state.terjawab": newTerjawab,
-                        [`game_state.${historyField}`]: newHistory,
+                        "game_state.terjawab": [...state.terjawab, matchedCanonical],
+                        [`game_state.${historyField}`]: [...history, targetLempar],
                         "game_state.waktu_habis": Date.now() + (state.max_durasi * 1000)
                     });
                 });
